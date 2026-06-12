@@ -2,8 +2,9 @@ export type BrandRegistryItem = {
   id: string;
   label: string;
   folder: string;
-  logoAsset?: string;
+  logoPath?: string;
   logoPreviewPath?: string;
+  logoAsset?: string;
 };
 
 export type ProjectRegistryItem = {
@@ -13,60 +14,132 @@ export type ProjectRegistryItem = {
   folder: string;
 };
 
-export const brands: BrandRegistryItem[] = [
-  {
-    id: "supplysync360",
-    label: "SupplySync360",
-    folder: "content/brands/supplysync360",
-    logoAsset: "content/brands/supplysync360/assets/supplysync360-logo.svg",
-    logoPreviewPath: "/brands/supplysync360/supplysync360-logo.svg",
-  },
-  {
-    id: "rainfin",
-    label: "RainFin",
-    folder: "content/brands/rainfin",
-    logoAsset: "content/brands/rainfin/assets/rainfin-logo.svg",
-    logoPreviewPath: "/brands/rainfin/rainfin-logo.svg",
-  },
-  {
-    id: "bma-open",
-    label: "Block Markets Africa / Open",
-    folder: "content/brands/bma-open",
-    logoAsset: "content/brands/bma-open/assets/bma-open-logo.svg",
-    logoPreviewPath: "/brands/bma-open/bma-open-logo.svg",
-  },
-  {
-    id: "thenga",
-    label: "Thenga",
-    folder: "content/brands/thenga",
-    logoAsset: "content/brands/thenga/assets/thenga-logo.svg",
-    logoPreviewPath: "/brands/thenga/thenga-logo.svg",
-  },
-];
+const brandMarkdownModules = import.meta.glob("../../../content/brands/**/*.md", {
+  eager: true,
+  query: "?raw",
+  import: "default",
+}) as Record<string, string>;
 
-export const projects: ProjectRegistryItem[] = [
-  {
-    id: "executive-overview",
-    label: "Executive Overview",
-    brandId: "supplysync360",
-    folder: "content/projects/supplysync360/executive-overview",
-  },
-  {
-    id: "advisory-forum",
-    label: "Advisory Forum",
-    brandId: "rainfin",
-    folder: "content/projects/rainfin/advisory-forum",
-  },
-  {
-    id: "client-management",
-    label: "Client Management",
-    brandId: "bma-open",
-    folder: "content/projects/bma-open/client-management",
-  },
-  {
-    id: "investor-canvas",
-    label: "Investor Canvas",
-    brandId: "thenga",
-    folder: "content/projects/thenga/investor-canvas",
-  },
-];
+const projectMarkdownModules = import.meta.glob("../../../content/projects/**/*.md", {
+  eager: true,
+  query: "?raw",
+  import: "default",
+}) as Record<string, string>;
+
+const brandAssetModules = import.meta.glob("../../../content/brands/**/assets/*.{svg,png,jpg,jpeg,webp}", {
+  eager: true,
+  query: "?url",
+  import: "default",
+}) as Record<string, string>;
+
+function normalizePath(input: string): string {
+  return input
+    .replace(/\\/g, "/")
+    .replace(/^\.\.\/\.\.\/\.\.\//, "")
+    .replace(/^\.\.\//, "")
+    .replace(/^\/+/, "");
+}
+
+function titleCase(input: string): string {
+  return input
+    .replace(/[-_]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .replace(/\b\w/g, (char) => char.toUpperCase());
+}
+
+function firstMarkdownHeading(markdown?: string): string {
+  if (!markdown) return "";
+  const match = markdown.match(/^#\s+(.+)$/m);
+  return match?.[1]?.trim() || "";
+}
+
+function preferredLogoAssetPath(brandId: string): string | undefined {
+  const prefix = `content/brands/${brandId}/assets/`;
+  const assets = Object.keys(brandAssetModules)
+    .map(normalizePath)
+    .filter((path) => path.startsWith(prefix));
+
+  if (assets.length === 0) return undefined;
+
+  const preferred = [
+    `${prefix}${brandId}-logo.svg`,
+    `${prefix}${brandId}.svg`,
+    `${prefix}${brandId}-logo.png`,
+    `${prefix}${brandId}.png`,
+    `${prefix}${brandId}-logo-transparent-dark.png`,
+    `${prefix}${brandId}-logo-transparent-light.png`,
+  ];
+
+  return preferred.find((candidate) => assets.includes(candidate)) || assets.sort()[0];
+}
+
+function discoverBrandIds(): string[] {
+  const ids = new Set<string>();
+
+  for (const rawPath of Object.keys(brandMarkdownModules)) {
+    const path = normalizePath(rawPath);
+    const match = path.match(/^content\/brands\/([^/]+)\//);
+    if (match?.[1]) ids.add(match[1]);
+  }
+
+  for (const rawPath of Object.keys(brandAssetModules)) {
+    const path = normalizePath(rawPath);
+    const match = path.match(/^content\/brands\/([^/]+)\//);
+    if (match?.[1]) ids.add(match[1]);
+  }
+
+  return Array.from(ids).sort();
+}
+
+function discoverProjects(): ProjectRegistryItem[] {
+  const projectMap = new Map<string, ProjectRegistryItem>();
+
+  for (const [rawPath, rawMarkdown] of Object.entries(projectMarkdownModules)) {
+    const path = normalizePath(rawPath);
+    if (path.includes("/generated-content/")) continue;
+
+    const match = path.match(/^content\/projects\/([^/]+)\/([^/]+)\//);
+    if (!match) continue;
+
+    const [, brandId, projectId] = match;
+    const key = `${brandId}/${projectId}`;
+    const folder = `content/projects/${brandId}/${projectId}`;
+    const existing = projectMap.get(key);
+    const isProjectFile = path === `${folder}/project.md`;
+    const heading = isProjectFile ? firstMarkdownHeading(rawMarkdown) : "";
+
+    projectMap.set(key, {
+      id: projectId,
+      brandId,
+      folder,
+      label: heading || existing?.label || titleCase(projectId),
+    });
+  }
+
+  return Array.from(projectMap.values()).sort((a, b) => {
+    if (a.brandId !== b.brandId) return a.brandId.localeCompare(b.brandId);
+    return a.label.localeCompare(b.label);
+  });
+}
+
+export const brands: BrandRegistryItem[] = discoverBrandIds().map((brandId) => {
+  const folder = `content/brands/${brandId}`;
+  const brandMarkdown = brandMarkdownModules[`../../../${folder}/brand.md`] || "";
+  const logoAsset = preferredLogoAssetPath(brandId);
+
+  return {
+    id: brandId,
+    label: firstMarkdownHeading(brandMarkdown) || titleCase(brandId),
+    folder,
+    logoPath: logoAsset,
+    logoPreviewPath: logoAsset,
+    logoAsset,
+  };
+});
+
+export const projects: ProjectRegistryItem[] = discoverProjects();
+
+export function getProjectsForBrand(brandId: string): ProjectRegistryItem[] {
+  return projects.filter((project) => project.brandId === brandId);
+}

@@ -877,7 +877,7 @@ function App() {
           <div className="panel-title panel-title-row">
             <div>
               <h2>Compiled Prompt</h2>
-              <p>Copy one run-ready, output-specific prompt. Visual prompts use Visible Text only. Document prompts use Body Content and the source MD.</p>
+              <p>Copy one run-ready, output-specific prompt. Production prompts stay lean: visual prompts use Visible Text once only, while document prompts use Body Content and the source MD.</p>
             </div>
             <div className="segmented-toggle">
               <button type="button" className={promptView === "production" ? "active" : ""} onClick={() => setPromptView("production")}>Production</button>
@@ -908,7 +908,7 @@ function App() {
                 <strong>{isDocumentLike ? "Document MD controls" : "Visual MD controls"}</strong>
                 <p>{isDocumentLike
                   ? "Use Download document MD when you want to attach the source separately. The copied prompt is still run-ready and uses Body Content for the document."
-                  : "Copy the visual MD when you want the source content available separately. The copied prompt remains visual-only and uses Visible Text as on-image text."}</p>
+                  : "Copy the visual MD when you want the source content separately. The compiled prompt stays visual-only and does not duplicate semantic analysis into the production prompt."}</p>
               </div>
 
               <div className="doc-workflow-actions compact-actions">
