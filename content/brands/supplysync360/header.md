@@ -1,0 +1,1 @@
+Use a consistent SupplySync360 header on every visual. Place the official logo/wordmark top-left, unchanged, subtle and secondary to the main message. Header height should be restrained, about 8-10% of slide height. Do not invent a logo, add taglines, resize inconsistently or duplicate the slide title in the header.

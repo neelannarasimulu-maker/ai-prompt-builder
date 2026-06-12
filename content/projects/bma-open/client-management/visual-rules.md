@@ -1,0 +1,1 @@
+For A4 Word/PDF outputs, use a structured executive document template with clear section numbering, fillable tables, strong header/footer discipline and generous white space. Use document-specific light backgrounds, not slide backgrounds. Keep table headers navy, input areas pale mint or white, and green/teal accents restrained.
