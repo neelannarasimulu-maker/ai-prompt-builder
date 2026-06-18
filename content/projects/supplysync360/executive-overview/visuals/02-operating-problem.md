@@ -1,26 +1,31 @@
 ## Intent
-Create the Operating problem slide for the SupplySync360 Executive Overview using a lighter premium brand style and a distinct layout.
 
-## Layout Hint
-problem_network_map
-
-## Background Hint
-pale_teal_mesh
+Show that the real supply chain challenge is fragmented execution rather than a lack of effort, systems or information.
 
 ## Visible Text
+
 The Operating Problem
 
 Supply chains are increasingly complex.
 
-Suppliers, branches, warehouses, fulfilment teams and customers generate operational signals every day.
+Suppliers, inventory locations, branches, warehouses, fulfilment teams and customers generate thousands of operational signals every day.
 
 These signals often sit in disconnected systems, spreadsheets, emails, supplier portals and manual workflows.
 
 Teams spend valuable time chasing information instead of resolving issues.
 
-Decisions are often made after stock, service or supplier problems have already created impact.
+Decisions are frequently made after stock, service or supplier problems have already created operational impact.
+
+The result is avoidable stockouts, excess inventory, supplier friction, delayed execution and reduced visibility.
 
 The cost of fragmentation grows as organisations scale.
 
 ## Image Brief
-Use a light diagnostic network-map layout. Show fragmented operational nodes and signals scattered across systems, then gently converging toward a cleaner coordination path. Use pale teal, soft grey and mist. Avoid dark background, tangled clutter and fake dashboard screens.
+
+Executive operations visual showing fragmented supply chain activities across suppliers, inventory, demand and fulfilment functions.
+
+Visualise disconnected signals, manual coordination and operational drag gradually converging toward a more controlled environment.
+
+The image should create recognition of the problem without feeling chaotic or negative.
+
+Use a premium SupplySync360 executive design style.

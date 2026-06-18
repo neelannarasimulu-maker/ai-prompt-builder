@@ -25,7 +25,15 @@ function countWords(input: string): number {
 }
 
 function isBulletLike(line: string): boolean {
-  return /^[-•*✓→↓]/.test(line.trim());
+  const first = line.trim().charCodeAt(0);
+  return [
+    42, // *
+    45, // -
+    8226, // bullet
+    8594, // right arrow
+    8595, // down arrow
+    10003, // check mark
+  ].includes(first);
 }
 
 export function analyseVisibleText(visibleText?: string): TextDensityAnalysis {

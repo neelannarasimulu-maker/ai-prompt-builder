@@ -1,13 +1,9 @@
 ## Intent
-Create the Inventory control slide for the SupplySync360 Executive Overview using a lighter premium brand style and a distinct layout.
 
-## Layout Hint
-inventory_hub_network
-
-## Background Hint
-light_network_canvas
+Show how SupplySync360 protects working capital and service performance through better inventory control.
 
 ## Visible Text
+
 Inventory Control
 
 Inventory represents cash, availability, service quality and operational risk.
@@ -21,4 +17,11 @@ Teams can identify risk earlier and respond before it becomes a financial or ser
 Better inventory control leads to stronger working capital management and improved operational reliability.
 
 ## Image Brief
-Use a light inventory hub network with stock locations, movement paths, ageing stock and one yellow risk signal around a central inventory control point. Keep the main reading area light and uncluttered.
+
+Premium inventory control visual showing stock movement, inventory risk and operational visibility connected through a unified control layer.
+
+Emphasise value protection, action-ready visibility and cash tied in stock.
+
+The image may use stockroom, retail, healthcare or warehouse-inspired elements, but must remain executive and uncluttered.
+
+No readable labels, fake dashboards, product brands or generic stock icons.

@@ -1,13 +1,9 @@
 ## Intent
-Create the Supplier coordination slide for the SupplySync360 Executive Overview using a lighter premium brand style and a distinct layout.
 
-## Layout Hint
-supplier_journey_map
-
-## Background Hint
-pale_teal_mesh
+Show how SupplySync360 improves supplier visibility, accountability and execution.
 
 ## Visible Text
+
 Supplier Coordination
 
 Supplier performance has a direct impact on service levels, inventory availability and operational efficiency.
@@ -21,4 +17,11 @@ Supplier conversations move from assumptions to evidence.
 The result is stronger accountability, fewer surprises and better operational control.
 
 ## Image Brief
-Use a light supplier journey map showing request, approval, order, dispatch, receiving, exception and closure as connected steps. Use teal route lines and one yellow exception signal. Avoid a dark logistics scene.
+
+Executive supplier coordination visual showing the full order journey connected through one operating pathway.
+
+Represent request, approval, supplier dispatch, delivery, receiving, exception handling and closure.
+
+Focus on transparency, accountability and coordinated execution.
+
+Use restrained teal signal paths and one yellow exception marker. No readable delivery labels, logos or fake dashboard screens.

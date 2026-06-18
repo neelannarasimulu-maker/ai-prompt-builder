@@ -1,13 +1,9 @@
 ## Intent
-Create the Platform role slide for the SupplySync360 Executive Overview using a lighter premium brand style and a distinct layout.
 
-## Layout Hint
-operating_layer_bridge
-
-## Background Hint
-light_network_canvas
+Define SupplySync360 as the operating layer that connects systems, suppliers, inventory and people without forcing a disruptive replacement of existing processes.
 
 ## Visible Text
+
 What SupplySync360 Is
 
 SupplySync360 sits between existing systems and operational teams.
@@ -18,7 +14,16 @@ Rather than replacing every system, it creates alignment between them.
 
 The platform provides visibility, prioritisation, ownership and accountability across day-to-day operations.
 
+It helps organisations coordinate what happens next, not simply report what happened yesterday.
+
 A practical control layer for modern supply chain execution.
 
 ## Image Brief
-Use a light bridge/layer visual showing existing systems on one side, operational teams on the other and SupplySync360 as the coordination layer between them. Use teal paths on a mist-white background with clean spacing.
+
+Premium operating-layer visual showing systems, suppliers, inventory locations, fulfilment teams and leadership connected through a central control layer.
+
+Use a modern executive architecture style with strong visual clarity and coordinated signal flows.
+
+The visual should communicate overlay, integration and coordination rather than system replacement.
+
+No readable text, fake dashboards, random logos or cluttered interface details.

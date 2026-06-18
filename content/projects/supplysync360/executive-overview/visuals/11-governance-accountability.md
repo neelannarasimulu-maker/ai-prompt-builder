@@ -1,13 +1,9 @@
 ## Intent
-Create the Governance accountability slide for the SupplySync360 Executive Overview using a lighter premium brand style and a distinct layout.
 
-## Layout Hint
-governance_timeline
-
-## Background Hint
-light_network_canvas
+Show how SupplySync360 strengthens governance, ownership and accountability.
 
 ## Visible Text
+
 Governance and Accountability
 
 Operational excellence requires visibility and ownership.
@@ -23,4 +19,11 @@ Teams can see what changed, who owns the next step, what is overdue and what has
 The result is stronger governance without increasing operational complexity.
 
 ## Image Brief
-Use a light governance timeline or accountability flow with stages for visibility, ownership, escalation, approval, closure and evidence. Use teal flow lines and one yellow exception point.
+
+Executive governance visual showing actions, ownership, escalation and closure connected through a traceable operating framework.
+
+The visual should communicate confidence, control and accountability.
+
+Use layered evidence cards, workflow paths and executive oversight cues without making the image feel bureaucratic.
+
+No readable documents, legal text, fake dashboards or generic compliance icons.

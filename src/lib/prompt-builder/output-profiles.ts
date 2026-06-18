@@ -23,7 +23,7 @@ export const outputProfiles: OutputProfile[] = [
     outputType: "image",
     format: "16:9 landscape image",
     useCase: "PowerPoint slide, screen presentation or web hero",
-    instruction: "Create a finished 16:9 executive visual. Use only the Visible Text as on-image text. Recommend the best layout automatically.",
+    instruction: "Create a finished 16:9 executive visual. Use only the Visible Text as on-image text. Recommend the best layout automatically. Generate as a high-resolution 16:9 PNG, ideally 3840x2160 px, with crisp text and no compression artifacts.",
   }),
   profile({
     id: "portrait_image_4_5",
@@ -63,7 +63,7 @@ export const outputProfiles: OutputProfile[] = [
     outputType: "image",
     format: "LinkedIn 4:5 image",
     useCase: "LinkedIn visual or carousel panel",
-    instruction: "Create a LinkedIn portrait image. Keep visible text large, sparse and mobile-readable. Use brand header/footer rules.",
+    instruction: "Create a LinkedIn portrait image. Keep visible text large, sparse and mobile-readable. Use brand header/footer rules. Prefer PNG for crisp text; use SVG only for reliable vector-style diagrams, and avoid JPEG unless smaller file size matters more than sharpness.",
   }),
   profile({
     id: "email_brief",

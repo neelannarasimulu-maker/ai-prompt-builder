@@ -2,7 +2,7 @@ export type OutputNamingInput = {
   contentPath?: string;
   contentFilename?: string;
   outputProfileId?: string;
-  outputType?: "image" | "document" | "pdf" | "text";
+  outputType?: "image" | "document" | "pdf" | "text" | "email";
   category?: string;
 };
 
@@ -11,6 +11,7 @@ const extensionByOutputType: Record<string, string> = {
   document: "docx",
   pdf: "pdf",
   text: "txt",
+  email: "txt",
 };
 
 function slugify(value: string): string {

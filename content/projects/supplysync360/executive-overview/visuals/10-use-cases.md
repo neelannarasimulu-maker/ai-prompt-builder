@@ -1,34 +1,37 @@
 ## Intent
-Create the Use cases slide for the SupplySync360 Executive Overview using a lighter premium brand style and a distinct layout.
 
-## Layout Hint
-industry_ecosystem_map
-
-## Background Hint
-white_panel_canvas
+Demonstrate the broad applicability of SupplySync360 across multiple industries.
 
 ## Visible Text
+
 Cross-Industry Use Cases
 
-Independent pharmacies
+Independent Pharmacies
 
-Healthcare providers
+Healthcare Providers
 
-Emergency medical services
+Emergency Medical Services
 
-Retail operations
+Retail Operations
 
-Agriculture and food supply chains
+Agriculture and Food Supply Chains
 
-Warehousing and distribution
+Warehousing and Distribution
 
-Branch networks
+Branch Networks
 
-Events and fulfilment operations
+Events and Fulfilment Operations
 
 Across industries, the challenge remains the same: fragmented signals, manual coordination and delayed action.
 
 SupplySync360 provides a common operating model that improves visibility, coordination and execution.
 
 ## Image Brief
-Use a bright industry ecosystem map with multiple realistic operating environments connected to one central operating model. Use light backgrounds, teal connection paths and clean labelled groupings.
+
+Premium multi-industry visual showing different operational environments connected through a shared control layer.
+
+Show one platform pattern supporting many real-world industry contexts.
+
+Use abstract but recognisable operational environments rather than generic icons.
+
+Keep the composition spacious and executive. No readable text, logos, crowded scenes or fake dashboards.

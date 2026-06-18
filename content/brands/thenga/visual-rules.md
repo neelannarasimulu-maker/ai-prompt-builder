@@ -13,7 +13,7 @@ Use a premium, human and investor-ready visual system built around trust, partic
 
 ## Background guidance
 
-Use soft brand depth: deep ubuntu navy or trust teal with warm sunrise, soft sand or earth-tone balance. Avoid backgrounds that are too dark, too flat, washed out or neon.
+Use a lighter balanced Thenga background: deep ubuntu navy, trust teal and richer brand colours may shape the perimeter, header or atmospheric gradient, but the main reading area should stay brighter and more open. Blend in soft sand, mist or pale neutral tone so slides feel premium and branded without becoming too dark. Avoid backgrounds that are too dark, too flat, washed out or neon.
 
 ## Visual typography
 

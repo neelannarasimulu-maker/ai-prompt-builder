@@ -1,30 +1,53 @@
 ## Intent
-Create the Core capabilities slide for the SupplySync360 Executive Overview using a lighter premium brand style and a distinct layout.
 
-## Layout Hint
-capability_grid
-
-## Background Hint
-white_panel_canvas
+Present the core capabilities that enable SupplySync360 to coordinate suppliers, inventory, demand and execution across the organisation.
 
 ## Visible Text
+
 Core Capabilities
 
-Supplier coordination
+Supplier Coordination
 
-Inventory visibility
+Track supplier performance, order status, delivery exceptions, substitutions, delays and resolution activity through a single operational view.
 
-Demand and replenishment signals
+Inventory Visibility
 
-Expiry and exception management
+Monitor stock position, inventory movement, batch risk, expiry exposure and location-level availability across the organisation.
 
-AI-assisted prioritisation
+Order-to-Receive Control
 
-Role-based accountability
+Provide visibility from request and approval through ordering, dispatch, receiving, reconciliation and closure.
 
-Audit-ready execution history
+Expiry and Stock Risk Management
 
-SupplySync360 connects the work that normally falls between systems, spreadsheets and people.
+Identify ageing inventory, slow-moving stock, excess holdings and at-risk inventory before value is lost.
+
+Forecasting and Replenishment Support
+
+Combine inventory, demand, supplier behaviour and operational signals to support more informed replenishment decisions.
+
+AI-Assisted Prioritisation
+
+Surface the exceptions, risks and opportunities that require attention first, helping teams focus on what matters most.
+
+Workflow and User Management
+
+Create ownership, accountability, escalation paths and operational discipline across teams and processes.
+
+Governance and Auditability
+
+Provide approval controls, audit trails, exception history and evidence-based decision support.
+
+Dashboards, Alerts and Operating Evidence
+
+Deliver operational visibility, performance insights and measurable evidence of execution outcomes.
+
+Together these capabilities create a practical operating framework that improves visibility, coordination, accountability and execution.
 
 ## Image Brief
-Use a clean light capability-grid layout with modular cards and subtle teal connectors. Keep cards spacious and readable. Avoid heavy icons, dark backgrounds and over-styled dashboard panels.
+
+Executive capability-map visual showing interconnected operating modules forming one coordinated supply chain platform.
+
+The visual should show capability clusters connected through a central SupplySync360 operating layer rather than a large hero image.
+
+Use a clean premium executive design with strong hierarchy, subtle teal signal paths and restrained yellow priority indicators.

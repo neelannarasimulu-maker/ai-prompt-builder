@@ -1,13 +1,9 @@
 ## Intent
-Create the Forecasting replenishment slide for the SupplySync360 Executive Overview using a lighter premium brand style and a distinct layout.
 
-## Layout Hint
-forecasting_layer_stack
-
-## Background Hint
-light_mist_gradient
+Demonstrate how SupplySync360 supports more informed planning and replenishment decisions.
 
 ## Visible Text
+
 Forecasting and Replenishment
 
 Demand patterns change continuously.
@@ -23,4 +19,11 @@ Better planning reduces waste, protects availability and improves operational ef
 Forecasting is not a crystal ball. It is an earlier planning signal.
 
 ## Image Brief
-Use a light layered planning stack. Show demand, stock movement, supplier behaviour and operational signals feeding replenishment decisions. Use pale teal layers, soft grey panels and one subtle yellow planning signal.
+
+Premium forecasting visual showing demand, supply and replenishment signals flowing through a forward-looking planning framework.
+
+The visual should communicate confidence, foresight and operational preparedness.
+
+Use subtle curves, planning horizons, stock movement and supplier timing cues.
+
+No readable charts, fake numbers, financial trading screens or generic analytics dashboards.

@@ -1,0 +1,62 @@
+{
+  "chatGptUrl": "https://chatgpt.com/",
+  "userDataDir": "~/.ai-prompt-builder/chatgpt-rpa-profile",
+  "browserChannel": "chrome",
+  "headless": false,
+  "slowMoMs": 120,
+  "timeouts": {
+    "loginMs": 15000,
+    "composerMs": 30000,
+    "generationMs": 420000,
+    "downloadMs": 120000
+  },
+  "selectors": {
+    "composer": [
+      "#prompt-textarea",
+      "[contenteditable='true'][data-lexical-editor='true']",
+      "textarea[placeholder*='Message']",
+      "textarea"
+    ],
+    "attachButton": [
+      "button[aria-label*='Attach']",
+      "button[aria-label*='Upload']",
+      "[data-testid='composer-plus-btn']",
+      "button:has-text('+')"
+    ],
+    "uploadMenuItem": [
+      "div[role='menuitem']:has-text('Upload')",
+      "div[role='menuitem']:has-text('file')",
+      "button:has-text('Upload')",
+      "button:has-text('Add photos')",
+      "button:has-text('Attach files')"
+    ],
+    "submitButton": [
+      "button[data-testid='send-button']",
+      "button[aria-label*='Send']",
+      "button:has-text('Send')"
+    ],
+    "downloadButton": [
+      "a[download]",
+      "button[aria-label*='Download']",
+      "a[aria-label*='Download']",
+      "button:has-text('Download')"
+    ],
+    "generatedImage": [
+      "main img[src^='blob:']",
+      "main img[src*='oaiusercontent']",
+      "main img[src*='oaidalleapiprodscus']",
+      "main img[alt*='Generated']",
+      "main img"
+    ],
+    "imagePreviewButton": [
+      "main button:has(img)",
+      "main a:has(img)",
+      "main img"
+    ],
+    "moreButton": [
+      "button[aria-label*='More']",
+      "button[aria-label*='Actions']",
+      "button[aria-haspopup='menu']"
+    ]
+  }
+}

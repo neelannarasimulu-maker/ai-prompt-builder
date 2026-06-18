@@ -1,24 +1,9 @@
-# Thenga Investor Canvas Visual Rules
+Use AI-recommended layout guided by each slide's Layout Hint and Background Hint when present. Use only supplied Visible Text as on-image text.
 
-Audience: investors, strategic partners and institutional collaborators.
+Thenga Investor Canvas visuals should feel premium, human, investor-ready and impact-led. Use soft but brand-aware medium-depth gradients from deep ubuntu navy, trust teal, prosperity gold, earth green, warm clay and soft sand. The background should carry brand richness without becoming too dark. Keep the main reading zones lighter and more open, and use darker tones mainly around the perimeter, framing or accent areas. Use lighter sand, mist or white content panels for readability.
 
-Purpose: position Thenga as trusted participation infrastructure for Africa's real economy, with vertical routes to market and measurable socio-economic impact.
+For ecosystem, flywheel, financial and competitive-positioning visuals, prioritise clear visual hierarchy, connected participation routes, hub-and-spoke systems, value-exchange flows and trusted infrastructure cues. Let colour and gradients support the story, not bury the text.
 
-Use Thenga or Thenga Social Enterprises as the centre of the ecosystem. Do not use Thenga.io unless explicitly requested.
+Avoid washed-out pale slides, full black backgrounds, overly dark investor-room styling, generic fintech imagery, unsupported market claims, invented metrics and clutter.
 
-## Visual style
-
-- Premium, human, impact-led and investor-ready.
-- Use hub-and-spoke systems, trust-and-value architecture, credential layers, wallet and value exchange layers, marketplace/service layers and impact flywheels.
-- Use the extracted Thenga logo from `content/brands/thenga/assets/`.
-- Use rich but readable brand-aware backgrounds: deep ubuntu navy, trust teal, prosperity gold, earth green, warm clay and soft sand.
-- Keep content cards readable and avoid overly dark backgrounds.
-- Avoid generic fintech clichés, fake metrics, clutter and overly detailed platform diagrams unless the content requires it.
-
-## Logo
-
-Use the dark-background logo for cover and navy/teal visuals:
-`content/brands/thenga/assets/thenga-logo-transparent-dark.png`
-
-Use the light-background logo for soft sand or white document-like visuals:
-`content/brands/thenga/assets/thenga-logo-transparent-light.png`
+Keep Thenga as the central Digital Spine and social-enterprise ecosystem. Do not refer to Thenga.io unless explicitly requested. Use Oncor, Ulti-Care and other verticals as spokes or industry access channels where relevant, not as the centre.

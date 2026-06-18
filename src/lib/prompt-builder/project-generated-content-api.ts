@@ -19,9 +19,11 @@ export type GeneratedContentCategory =
 export type GeneratedContentFile = {
   id: string;
   filename: string;
+  displayName: string;
   relativePath: string;
   generatedRelativePath: string;
   category: GeneratedContentCategory;
+  versionLabel?: string;
   fileUrl: string;
   fileType: "image" | "pdf" | "document" | "presentation" | "text" | "other";
   sizeBytes: number;
@@ -49,6 +51,15 @@ export type GeneratedContentFolderResponse = {
   ok: boolean;
   folder?: string;
   generatedContentRoot?: string;
+  error?: string;
+};
+
+export type ExportGeneratedContentResponse = {
+  ok: boolean;
+  filename?: string;
+  relativePath?: string;
+  fileUrl?: string;
+  skipped?: string[];
   error?: string;
 };
 
@@ -113,6 +124,7 @@ export async function uploadProjectGeneratedContent(input: {
   category: Exclude<GeneratedContentCategory, "all">;
   file: File;
   targetFilename?: string;
+  versionLabel?: string;
 }): Promise<UploadGeneratedContentResponse> {
   const arrayBuffer = await input.file.arrayBuffer();
   const bytes = new Uint8Array(arrayBuffer);
@@ -134,6 +146,7 @@ export async function uploadProjectGeneratedContent(input: {
       category: input.category,
       filename: input.file.name,
       targetFilename: input.targetFilename,
+      versionLabel: input.versionLabel,
       dataBase64,
     }),
   });
@@ -166,6 +179,23 @@ export async function getProjectGeneratedContentFolder(input: {
   };
 }
 
+export async function exportProjectGeneratedContent(input: {
+  projectFolder: string;
+  fileIds: string[];
+  format: "pptx" | "pdf";
+  outputFilename?: string;
+}): Promise<ExportGeneratedContentResponse> {
+  const response = await fetch("/api/generated-content/export", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(input),
+  });
+
+  return response.json() as Promise<ExportGeneratedContentResponse>;
+}
+
 export function formatFileSize(sizeBytes: number): string {
   if (sizeBytes < 1024) return `${sizeBytes} B`;
   if (sizeBytes < 1024 * 1024) return `${(sizeBytes / 1024).toFixed(1)} KB`;
@@ -188,4 +218,53 @@ export function generatedCategoryForProfile(input: {
   }
   if (input.profileId.includes("prompt")) return "prompts";
   return "other";
+}
+
+export function stripDuplicateExtensions(filename: string): string {
+  const parts = filename.split(".");
+  if (parts.length < 3) return filename;
+
+  while (
+    parts.length > 2 &&
+    parts[parts.length - 1].toLowerCase() === parts[parts.length - 2].toLowerCase()
+  ) {
+    parts.pop();
+  }
+
+  return parts.join(".");
+}
+
+export function basenameWithoutExtension(filename: string): string {
+  return stripDuplicateExtensions(filename).replace(/\.[a-z0-9]+$/i, "");
+}
+
+export function copyableFilename(filename: string): string {
+  return basenameWithoutExtension(filename);
+}
+
+export function getGeneratedFileDisplayName(file: Pick<GeneratedContentFile, "filename">): string {
+  return basenameWithoutExtension(file.filename)
+    .replace(/[-_]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+export function getGeneratedFileVersionLabel(generatedRelativePath: string): string | undefined {
+  const segments = generatedRelativePath.replace(/\\/g, "/").split("/");
+  const version = segments.find((segment) => /^version\s+\d+(?:\.\d+)?$/i.test(segment.trim()));
+  return version?.trim();
+}
+
+export function getGeneratedVersionSortValue(versionLabel: string): number {
+  if (versionLabel === "Unversioned") return -1;
+  const match = versionLabel.match(/(\d+(?:\.\d+)?)/);
+  return match ? Number(match[1]) : 0;
+}
+
+export function enrichGeneratedContentFile(file: GeneratedContentFile): GeneratedContentFile {
+  return {
+    ...file,
+    displayName: file.displayName || getGeneratedFileDisplayName(file),
+    versionLabel: file.versionLabel || getGeneratedFileVersionLabel(file.generatedRelativePath),
+  };
 }

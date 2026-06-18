@@ -1,38 +1,26 @@
-# Slide 07 - Platform Architecture
-
 ## Intent
-Show how the platform works.
-
-## Layout Hint
-layered_architecture
-
-## Background Hint
-technology_depth
+Show how the ecosystem connects participants and institutions.
 
 ## Visible Text
-Participation Layer
-Communities
-Businesses
-Institutions
-Creators
-Farmers
 
-Digital Spine
-Identity
-Credentials
-Wallet
-Settlement
-Marketplace
-Rewards
-Data & Analytics
-Compliance
-AI Services
+### Platform Architecture
 
-Partner Ecosystem
-Banks
-Insurers
-Government
-Technology Partners
+At the heart of Thenga is a Digital Spine that connects participants, ecosystems and institutions through common infrastructure.
+
+Participants interact through shared trust, credentials, wallets, settlement, marketplace and data services, while institutions benefit from improved visibility, coordination and measurable outcomes.
+
+### Participation Layer
+Communities, Businesses, Institutions, Creators, Farmers and Healthcare Participants.
+
+### Digital Spine
+Identity, Credentials, Wallets, Settlement, Marketplace, Data & Analytics, Compliance and AI Services.
+
+### Partner Ecosystem
+Banks, Insurers, Government, Technology Partners and Industry Platforms.
+
+### Strategic Principle
+
+Thenga does not replace industry platforms. It connects them through shared participation infrastructure.
 
 ## Image Brief
-Layered architecture showing participation, digital spine and partner ecosystem.
+Layered architecture showing participation flowing through the Digital Spine to institutional partners.

@@ -1,24 +1,31 @@
 ## Intent
-Create the Business overview slide for the SupplySync360 Executive Overview using a lighter premium brand style and a distinct layout.
 
-## Layout Hint
-executive_opening_split
-
-## Background Hint
-light_mist_gradient
+Position SupplySync360 as the practical AI-assisted operating layer that helps organisations coordinate suppliers, inventory, demand and fulfilment through one control framework.
 
 ## Visible Text
+
 SupplySync360 Business Overview
 
 Stop managing silos. Start coordinating action.
 
-One operating layer for supplier, inventory, demand and fulfilment visibility.
+Most organisations have supplier information, inventory data, ordering activity and demand signals spread across multiple systems, teams and processes.
 
-Supplier, inventory and demand signals are fragmented across systems and people.
+The challenge is rarely a lack of data.
 
-Teams lose time through emails, calls, spreadsheet follow-ups and inconsistent pricing.
+The challenge is turning fragmented signals into coordinated action.
 
-SupplySync360 creates a control layer that turns signals into accountable action.
+SupplySync360 creates a practical operating layer that connects suppliers, inventory, demand, fulfilment and operational teams.
+
+The platform helps organisations move from reactive management to proactive control through visibility, prioritisation, accountability and execution.
+
+From visibility to orchestration.
 
 ## Image Brief
-Create a light executive supply chain control scene. Show connected supplier, inventory, demand and fulfilment signals flowing into one clear operating layer. Use white, mist, soft grey and teal with one restrained yellow priority signal. Keep the header consistent and do not use a dark full-slide background.
+
+Premium executive supply chain control scene showing suppliers, inventory, demand and fulfilment signals flowing into a single coordinated operating layer.
+
+The visual should communicate clarity, control and operational confidence.
+
+Use SupplySync360 brand colours with a modern executive technology aesthetic and one subtle yellow priority signal.
+
+No readable text, fake dashboards, generic icons or cluttered interfaces.

@@ -1,13 +1,9 @@
 ## Intent
-Create the Business outcomes slide for the SupplySync360 Executive Overview using a lighter premium brand style and a distinct layout.
 
-## Layout Hint
-outcome_scorecard
-
-## Background Hint
-white_panel_canvas
+Summarise the measurable business value created through better operational coordination.
 
 ## Visible Text
+
 Business Outcomes
 
 Less manual follow-up.
@@ -33,4 +29,11 @@ The outcome is not simply better reporting.
 The outcome is better coordinated action and measurable operational performance.
 
 ## Image Brief
-Use a bright outcome scorecard layout with grouped outcome cards and a clear value statement. Use soft grey panels, teal accents and one restrained yellow confirmation signal.
+
+Premium executive outcomes visual showing operational improvements flowing into business value.
+
+Use outcome cards, signal paths and boardroom-ready performance styling.
+
+The image should feel commercial, confident and measurable.
+
+Avoid fake numbers, readable dashboards, generic icons and cluttered reporting screens.

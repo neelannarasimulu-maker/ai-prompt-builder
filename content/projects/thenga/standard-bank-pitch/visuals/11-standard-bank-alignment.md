@@ -1,28 +1,33 @@
-# Slide 11 - Strategic Alignment
-
 ## Intent
-Show partnership opportunities.
-
-## Layout Hint
-partnership_alignment
-
-## Background Hint
-executive_collaboration
+Demonstrate strategic relevance to Standard Bank.
 
 ## Visible Text
-Creating New Participation Pathways
 
-SME Enablement
-Informal Economy Participation
-Merchant Ecosystems
-Event Economy Settlement
-Agricultural Value Chains
-Community Enterprise Development
-Impact Measurement
+### Creating New Participation Pathways
 
-Thenga helps make participation visible, trusted and bankable.
+Thenga focuses on making participation visible, trusted and measurable.
 
-Standard Bank provides the financial infrastructure that enables that participation to scale.
+Standard Bank provides the financial infrastructure that enables participation to scale.
+
+Together there is an opportunity to create stronger connections between people, businesses, communities and economic opportunity.
+
+### Areas of Strategic Alignment
+
+SME Enablement – helping smaller enterprises become more visible and financeable.
+
+Merchant Ecosystems – supporting participation across value chains.
+
+Agricultural Value Chains – improving access, coordination and inclusion.
+
+Community Enterprise Development – enabling local economic activity.
+
+Financial Inclusion – connecting underserved participants to formal systems.
+
+Impact Measurement – providing evidence of outcomes and participation.
+
+### Shared Opportunity
+
+How can trusted participation infrastructure and financial infrastructure work together to unlock new pathways for growth, inclusion and economic participation?
 
 ## Image Brief
-Strategic partnership canvas showing Thenga and Standard Bank creating economic participation pathways.
+Executive collaboration visual showing Thenga and Standard Bank enabling economic participation at scale.

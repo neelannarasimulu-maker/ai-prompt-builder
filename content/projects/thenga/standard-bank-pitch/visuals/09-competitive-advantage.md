@@ -1,23 +1,29 @@
-# Slide 09 - Competitive Advantage
-
 ## Intent
 Explain why Thenga is difficult to replicate.
 
-## Layout Hint
-strategic_positioning
-
-## Background Hint
-institutional_depth
-
 ## Visible Text
-Our Advantage Is Not Technology Alone
 
-Shared Infrastructure Model
-Multiple Routes To Market
-Trust As Infrastructure
-Institutional Integration
+### Our Advantage Is Not Technology Alone
 
-People + Markets + Services + Capital + Trust
+Technology can be copied. Trust, participation networks and ecosystem relationships are significantly harder to replicate.
+
+Thenga creates value by connecting people, markets, services, institutions and capital through shared participation infrastructure.
+
+### Strategic Advantages
+
+Shared Infrastructure Model – one foundation serving multiple industries.
+
+Multiple Routes to Market – access through sector ecosystems.
+
+Trust as Infrastructure – participation becomes measurable and credible.
+
+Institutional Integration – connecting communities with formal systems.
+
+Cross-Sector Participation – creating stronger network effects.
+
+### People + Markets + Services + Capital + Trust
+
+The more ecosystems connected through the Digital Spine, the stronger the value proposition becomes.
 
 ## Image Brief
-Strategic positioning visual highlighting trust, ecosystem access and network effects.
+Executive strategic positioning visual contrasting isolated platforms with connected ecosystem infrastructure.

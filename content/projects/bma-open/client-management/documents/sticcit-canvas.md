@@ -32,6 +32,10 @@ Sticitt is the payment solution that brings your entire school campus into one p
 
 Sticitt is an end-to-end payment solution that takes your school fully cashless. We handle all things payments by connecting directly with any app your school already uses, we save you hours of admin and thousands in bank fees.
 
+#Assumptions:
+1. Sticcit will use its app for users and not issue individual wallets to their users - https://money-test.sticitt.co.za/
+2. Action: Contact Mitch Dart or Theo to execute the necessary steps to formalize the contract novation to Rainfund.
+
 # Services from Open
 | Service         | Status      | Notes                                                                     |
 | --------------- | ----------- | ------------------------------------------------------------------------- |
@@ -45,7 +49,7 @@ Sticitt is an end-to-end payment solution that takes your school fully cashless.
 | -------------- | ----------- | -------------------------------------------------------------------- |
 | JR via RainFin | Completed   | JR oversight and operating model currently being formalised.         |
 | KYB Client     | Planned     | KYB status to be confirmed.                                          |
-| Sumsub KYC Key | In Progress | 1. New Sumsub key provisioned. 2. Sumsub due dilligence in progress. |
+| Sumsub KYC Key | In Progress | 1. New Sumsub key provisioned. 2. Sumsub due dilligence in progress.  3. Provide Sticcit with KYC Pricing |
 | Contract       | Planned     | Support responsibilities and contractual obligations under review.   |
 | Business Case  | Not Applicable | Existing client. Progress is beyond business case stage.          |
 
@@ -57,7 +61,7 @@ Sticitt is an end-to-end payment solution that takes your school fully cashless.
 | Provide API Documentation | Completed   | API documentation issued to Sticcit.            |
 | Client API Integration    | In Progress | Sticcit development team integrating with APIs. |
 | Client Testing            | Planned     | UAT planned for 29 June 2026.                   |
-| KYC Flows                 | Planned     | KYC workflow implementation still required.     |
+| KYC Flows                 | Planned     | 1. KYC workflow implementation still required.  2. Integration by Sticcit to new flows.   |
 | JR Notice in App          | Planned     | To be confirmed.                                |
 | App FAQs                  | Planned     | To be confirmed.                                |
 | App Terms and Conditions  | Planned     | To be confirmed.                                |

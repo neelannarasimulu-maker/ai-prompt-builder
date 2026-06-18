@@ -1,13 +1,9 @@
 ## Intent
-Create the Executive call to action slide for the SupplySync360 Executive Overview using a lighter premium brand style and a distinct layout.
 
-## Layout Hint
-cta_action_path
-
-## Background Hint
-balanced_teal_frame
+Close the executive overview with a clear pathway to proving value.
 
 ## Visible Text
+
 Start With One Control Problem
 
 Do not begin with a large transformation.
@@ -39,4 +35,11 @@ www.supplysync360.co.za
 https://www.linkedin.com/company/supplysync360
 
 ## Image Brief
-Use a clean light call-to-action layout with a simple action path and a compact contact block. Show executives reviewing an operational control map only if it does not overpower the text. Keep header and footer consistent and avoid dark full-slide styling.
+
+Premium executive closing visual showing leadership reviewing a coordinated operating model with clear next-step momentum.
+
+Provide clean space for contact details and a strong executive call to action.
+
+Use a confident SupplySync360 executive style with subtle teal signal paths and one yellow next-step marker.
+
+No readable screens, fake dashboards, cluttered visual elements or unrelated logos.

@@ -1,48 +1,67 @@
-# Slide 04 - Executive Profiles
-
 ## Intent
-Show leadership credentials.
-
-## Layout Hint
-executive_profile_grid
-
-## Background Hint
-soft_brand_depth
+Demonstrate leadership depth and execution capability.
 
 ## Visible Text
-Neelan Narasimulu
-Founder & Executive Lead
 
-30 years across banking, asset management, insurance, payments and fintech ecosystems.
+### Executive Profiles
 
-Key Impact
-R340bn payment infrastructure leadership
-$18bn annual transaction ecosystems
-2 million+ members supported
+### Leadership Experience Built Across Large-Scale Customer, Data and Transaction Ecosystems
 
-Previous Roles
-CEO - Sanlam Multi Data
-CIO - Sanlam Reality
-Global Head IT Data Services - Investec Asset Management
+### Raymond Mahlangu (MBA Henley)
+Chief Executive & Founder
 
-Education
-Executive MBA (Quantic)
-BSc Statistics & Mathematics
+30 years | Former Group CDAO: Sanlam, Alexander Forbes | Vodacom
+Enterprise Value: R382.7M delivered (R156.7M realised + R226M pipeline)
 
-Raymond Mahlangu
-CDAO & Founder
+Key Experience:
+• Commercial growth and customer engagement programmes
+• Data-driven decision making and operational optimisation
+• Business transformation and performance improvement
 
-Key Impact
-R36m+ revenue generated
-5.8x ROI delivered
-20 million+ customers supported
-R100m+ operational savings
+### Tim Vermaak
+Technology & Platform Leadership
 
-Education
-MBA (Henley)
-Executive Development (UCT)
+Experienced technology executive with expertise in platform architecture, digital solutions, software delivery and enterprise technology execution.
 
-Tim Vermaak | Gavin van Wyk | Mpake
+Key Experience:
+• Enterprise platform development
+• Technology strategy and solution design
+• Product delivery and operational execution
+• Scalable digital ecosystem enablement
+
+### Gavin van Wyk
+Commercial & Ecosystem Development
+
+Experienced business leader focused on commercial growth, strategic partnerships and market development.
+
+Key Experience:
+• Business development and growth strategies
+• Partner ecosystem creation
+• Commercial execution and route-to-market development
+• Stakeholder engagement and relationship management
+
+### Mpake
+Community & Economic Participation
+
+Focused on community activation, economic participation and inclusive growth initiatives.
+
+Key Experience:
+• Community engagement and mobilisation
+• Economic participation programmes
+• Stakeholder coordination
+• Inclusive growth and development initiatives
+
+### Neelan Narasimulu (eMBA Quantic)
+Executive Lead
+
+30+ years | ex-CEO, ex-CIO Sanlam Group, Ninety One, Standard Bank |  Payments, Data, Technology, Artificial Intelligence, Entrepreneur driving growth and digital transformation.
+
+Key Experience:
+• Leadership of large-scale payment and transaction ecosystems
+• Executive roles across recognised financial institutions
+• Experience building customer, data and technology platforms
+• Deep understanding of market development and ecosystem growth
+
 
 ## Image Brief
-Executive leadership grid with professional profile presentation.
+Premium executive profile presentation with professional leadership positioning.

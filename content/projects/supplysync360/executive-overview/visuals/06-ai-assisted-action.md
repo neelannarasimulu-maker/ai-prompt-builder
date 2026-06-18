@@ -1,34 +1,59 @@
 ## Intent
-Create the Ai assisted action slide for the SupplySync360 Executive Overview using a lighter premium brand style and a distinct layout.
 
-## Layout Hint
-ai_signal_filter
-
-## Background Hint
-soft_radial_teal
+Position AI as a practical operational decision assistant that helps teams identify priorities, reduce noise and act earlier.
 
 ## Visible Text
+
 AI-Assisted Action
 
-AI should reduce noise, not create it.
+AI should reduce operational noise, not create more of it.
 
-SupplySync360 analyses operational signals and highlights the risks that require attention first.
+SupplySync360 continuously evaluates supplier, inventory, demand and fulfilment signals to identify where attention is required.
 
-Ageing stock.
+The platform helps prioritise:
 
-Supply shortages.
+Ageing inventory
 
-Late deliveries.
+Expiry exposure
 
-Unusual demand.
+Stock shortage risk
 
-Supplier exceptions.
+Overstock conditions
 
-Replenishment pressure.
+Late supplier deliveries
 
-The value of AI is not prediction alone.
+Supplier performance exceptions
+
+Unexpected demand changes
+
+Replenishment pressure
+
+Operational bottlenecks
+
+Instead of presenting hundreds of disconnected alerts, SupplySync360 focuses attention on the risks and actions most likely to impact cost, service and operational performance.
+
+AI recommendations can support:
+
+Reorder decisions
+
+Supplier escalation
+
+Inventory transfers
+
+Return reviews
+
+Exception management
+
+Risk mitigation actions
+
+The value is not prediction alone.
 
 The value is helping teams make earlier, better and more accountable decisions.
 
 ## Image Brief
-Use a light signal-filter composition. Show many supply chain signals flowing into an AI-assisted prioritisation filter, then emerging as a small set of recommended actions. Use pale teal and white with one yellow priority highlight.
+
+Premium AI-assisted operations visual showing large volumes of operational signals flowing into an intelligent prioritisation layer and emerging as a smaller number of recommended actions.
+
+Avoid robots, humanoid AI imagery and science-fiction themes.
+
+The visual should communicate practical decision support, operational focus and executive confidence through clean signal flows and prioritised action markers.
