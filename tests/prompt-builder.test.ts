@@ -27,7 +27,8 @@ describe("prompt builder registry", () => {
 
     expect(thenga?.logoAssets.map((asset) => asset.path)).toContain("content/brands/thenga/assets/thenga-logo-transparent-dark.png");
     expect(thenga?.logoAssets.every((asset) => asset.path.startsWith("content/brands/thenga/assets/"))).toBe(true);
-    expect(supply?.logoAssets.map((asset) => asset.path)).toContain("content/brands/supplysync360/assets/supplysync360-logo.png");
+    expect(supply?.logoAssets.map((asset) => asset.path)).toContain("content/brands/supplysync360/assets/supplysync360-logo-dark.png");
+    expect(supply?.logoAssets.map((asset) => asset.path)).toContain("content/brands/supplysync360/assets/supplysync360-logo-white.png");
     expect(supply?.logoAssets[0].isPng).toBe(true);
   });
 });
@@ -292,7 +293,7 @@ describe("compilePrompt", () => {
     });
 
     expect(result.productionPrompt).toContain("Header: THENGA SOCIAL ENTERPRISES | Investor Pitch for Standard Bank");
-    expect(result.productionPrompt).toContain("Footer: Trust | Inclusion | Participation | Prosperity | Copyright 2026. Thenga Social Enterprises.");
+    expect(result.productionPrompt).toContain("Footer: Trust | Inclusion | Participation | Prosperity | Copyright 2026. All Rights Reserved.");
     expect(result.productionPrompt).toContain("Logo: use official PNG asset content/brands/thenga/assets/thenga-logo-transparent-dark.png");
     expect(result.productionPrompt).toContain("header on every slide");
     expect(result.productionPrompt).toContain("Deck structure lock: 16:9 landscape");
@@ -332,9 +333,15 @@ describe("compilePrompt", () => {
       backgroundTheme: "dark",
     });
 
-    expect(balanced.productionPrompt).toContain("Background theme: Soft Premium Gradient");
+    expect(balanced.productionPrompt).toContain("Background theme: Balanced In-Between");
+    expect(balanced.productionPrompt).toContain("saturated brand-colour gradient bands");
+    expect(balanced.productionPrompt).toContain("luminous accent lines");
     expect(light.productionPrompt).toContain("Background theme: Light");
+    expect(light.productionPrompt).toContain("Light must not mean plain white");
+    expect(light.productionPrompt).toContain("gradient movement");
     expect(dark.productionPrompt).toContain("Background theme: Dark");
+    expect(dark.productionPrompt).toContain("multi-stop gradients");
+    expect(dark.productionPrompt).toContain("luminous brand glows");
     expect(light.productionPrompt).toContain("brand");
     expect(dark.productionPrompt).toContain("Brand colours:");
   });
@@ -351,6 +358,77 @@ describe("compilePrompt", () => {
     expect(result.productionPrompt).toContain("Page background theme: Dark");
     expect(result.productionPrompt).toContain("Brand colours:");
     expect(result.promptPreview.backgroundTheme).toBe("Dark");
+  });
+
+  it("auto-selects lighter balanced presets when no background hint is supplied", () => {
+    const result = compilePrompt({
+      brandId: "supplysync360",
+      projectId: "executive-overview",
+      contentId: "ss360-slide-01",
+      outputProfileId: "landscape_image_16_9",
+      markdownOverride: [
+        "## Intent",
+        "Create a general executive overview slide.",
+        "",
+        "## Visible Text",
+        "Title: Coordinated Supply Chain Control",
+        "Body: Give executives a clearer way to coordinate supply, inventory and supplier action.",
+        "",
+        "## Image Brief",
+        "Use a balanced branded executive overview visual with protected text zones.",
+      ].join("\n"),
+    });
+
+    expect(result.dynamicLayoutPlan.backgroundPresetId).not.toMatch(/midnight|graphite/i);
+    expect(result.productionPrompt).toContain("saturated brand-colour gradient bands");
+    expect(result.productionPrompt).toContain("vibrant");
+  });
+
+  it("uses varied content-aware layouts for the SupplySync360 executive overview deck", () => {
+    const cases = [
+      ["ss360-slide-01", "hero_scene_overlay"],
+      ["ss360-slide-02", "converging_signal_map"],
+      ["ss360-slide-03", "circular_control_loop"],
+      ["ss360-slide-04", "operating_layer_bridge"],
+      ["ss360-slide-05", "capability_orbit_map"],
+      ["ss360-slide-06", "signal_priority_funnel"],
+      ["ss360-slide-07", "inventory_value_map"],
+      ["ss360-slide-08", "supplier_journey_path"],
+      ["ss360-slide-09", "forecasting_horizon"],
+      ["ss360-slide-10", "industry_constellation"],
+      ["ss360-slide-11", "governance_evidence_flow"],
+      ["ss360-slide-12", "outcome_value_stream"],
+      ["ss360-slide-13", "cta_action_path"],
+    ];
+
+    const layouts = cases.map(([contentId, expectedLayout]) => {
+      const result = compilePrompt({
+        brandId: "supplysync360",
+        projectId: "executive-overview",
+        contentId,
+        outputProfileId: "landscape_image_16_9",
+      });
+      expect(result.dynamicLayoutPlan.layoutPresetId).toBe(expectedLayout);
+      return result.dynamicLayoutPlan.layoutPresetId;
+    });
+
+    expect(new Set(layouts).size).toBe(cases.length);
+  });
+
+  it("adds layout variation, text emphasis and striking imagery rules to SS360 prompts", () => {
+    const result = compilePrompt({
+      brandId: "supplysync360",
+      projectId: "executive-overview",
+      contentId: "ss360-slide-03",
+      outputProfileId: "landscape_image_16_9",
+    });
+
+    expect(result.productionPrompt).toContain("Do not repeat the same text-left/image-right block composition");
+    expect(result.productionPrompt).toContain("bold typographic hierarchy");
+    expect(result.productionPrompt).toContain("coloured emphasis");
+    expect(result.productionPrompt).toContain("Composition zones:");
+    expect(result.productionPrompt).toContain("central-loop");
+    expect(result.productionPrompt).toContain("Use striking dimensional imagery");
   });
 
   it("uses background theme when resolving Thenga logo variants from brand rules", () => {

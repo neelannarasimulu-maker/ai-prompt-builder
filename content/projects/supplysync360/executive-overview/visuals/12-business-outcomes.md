@@ -4,7 +4,9 @@ Summarise the measurable business value created through better operational coord
 
 ## Visible Text
 
-Business Outcomes
+### Business Outcomes
+
+### Better coordination creates measurable operating value.
 
 Less manual follow-up.
 
@@ -24,16 +26,18 @@ Clear ownership and closure.
 
 Improved service reliability.
 
-The outcome is not simply better reporting.
+### The outcome is not simply better reporting.
 
-The outcome is better coordinated action and measurable operational performance.
+### The outcome is better coordinated action and measurable operational performance.
 
 ## Image Brief
 
-Premium executive outcomes visual showing operational improvements flowing into business value.
+Create a premium executive outcomes visual showing operational improvements flowing into business value.
 
-Use outcome cards, signal paths and boardroom-ready performance styling.
+Use outcome cards, structured value pathways and boardroom-ready performance styling without adding fake numbers or unsupported metrics.
 
-The image should feel commercial, confident and measurable.
+The visual should feel commercial, confident and measurable, with outcomes grouped into operational efficiency, risk control, supplier accountability, working capital and service reliability.
 
-Avoid fake numbers, readable dashboards, generic icons and cluttered reporting screens.
+Use clean teal signal paths, light executive cards, subtle graphite depth and restrained yellow value emphasis.
+
+Avoid fake numbers, readable dashboards, generic icons, cluttered reporting screens or exaggerated transformation imagery.

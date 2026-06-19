@@ -4,28 +4,30 @@ Position SupplySync360 as the practical AI-assisted operating layer that helps o
 
 ## Visible Text
 
-SupplySync360 Business Overview
+### SupplySync360 Business Overview
 
-Stop managing silos. Start coordinating action.
+### Stop managing silos. Start coordinating action.
 
 Most organisations have supplier information, inventory data, ordering activity and demand signals spread across multiple systems, teams and processes.
 
 The challenge is rarely a lack of data.
 
-The challenge is turning fragmented signals into coordinated action.
+### The challenge is turning fragmented signals into coordinated action.
 
 SupplySync360 creates a practical operating layer that connects suppliers, inventory, demand, fulfilment and operational teams.
 
 The platform helps organisations move from reactive management to proactive control through visibility, prioritisation, accountability and execution.
 
-From visibility to orchestration.
+### From visibility to orchestration.
 
 ## Image Brief
 
-Premium executive supply chain control scene showing suppliers, inventory, demand and fulfilment signals flowing into a single coordinated operating layer.
+Create a premium executive supply chain control scene where suppliers, inventory, demand, fulfilment and frontline operational signals flow into one coordinated operating layer.
 
-The visual should communicate clarity, control and operational confidence.
+Use a full-width hero composition with a structured text zone and a central orchestration hub supported by subtle dimensional supply chain elements.
 
-Use SupplySync360 brand colours with a modern executive technology aesthetic and one subtle yellow priority signal.
+The visual should communicate clarity, control, prioritisation and operational confidence.
 
-No readable text, fake dashboards, generic icons or cluttered interfaces.
+Use SupplySync360 brand colours, vibrant teal/deep-teal signal paths, lighter readable content panels and one restrained signal-yellow priority cue.
+
+No readable text inside the scene, fake dashboards, unsupported metrics, generic icons or cluttered interfaces.

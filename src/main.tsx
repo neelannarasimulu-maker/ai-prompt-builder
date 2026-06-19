@@ -43,6 +43,21 @@ import {
   type GeneratedContentFile,
 } from "./lib/prompt-builder/project-generated-content-api";
 import { extractLogoAssetPaths } from "./lib/prompt-builder/logo-resolution";
+import {
+  buildBatchRunManifest,
+  buildBatchVisualPrompt,
+  buildBrandQaScorecard,
+  buildDocumentAssemblyPrompt,
+  buildStyleMemoryPrompt,
+  buildVariantPrompt,
+  getPromptRecipe,
+  getVariantDirection,
+  promptRecipes,
+  variantDirections,
+  workflowModes,
+  type BatchPromptItem,
+  type WorkflowMode,
+} from "./lib/prompt-builder/workflow-features";
 
 type BrandItem = {
   id: string;
@@ -807,6 +822,26 @@ function App() {
   const [assistCopiedFilename, setAssistCopiedFilename] = useState(false);
   const [assistChatGptOpened, setAssistChatGptOpened] = useState(false);
   const [assistUploadFile, setAssistUploadFile] = useState<File | null>(null);
+  const [workflowMode, setWorkflowMode] = useLocalStorageState<WorkflowMode>(
+    "promptBuilder.workflowMode",
+    "run"
+  );
+  const [selectedRecipeId, setSelectedRecipeId] = useLocalStorageState(
+    "promptBuilder.selectedRecipeId",
+    "investor_deck"
+  );
+  const [selectedVariantId, setSelectedVariantId] = useLocalStorageState(
+    "promptBuilder.selectedVariantId",
+    "executive_minimal"
+  );
+  const [selectedBatchContentPaths, setSelectedBatchContentPaths] = useLocalStorageState<string[]>(
+    "promptBuilder.selectedBatchContentPaths",
+    []
+  );
+  const [approvedGeneratedFileIds, setApprovedGeneratedFileIds] = useLocalStorageState<string[]>(
+    "promptBuilder.approvedGeneratedFileIds",
+    []
+  );
 
   useEffect(() => {
     if (!selectedGeneratedCategory) setSelectedGeneratedCategory(inferredGeneratedCategory);
@@ -949,6 +984,154 @@ function App() {
     [filteredGeneratedFiles, selectedGeneratedFileId]
   );
 
+  const selectedRecipe = useMemo(() => getPromptRecipe(selectedRecipeId), [selectedRecipeId]);
+  const selectedVariant = useMemo(() => getVariantDirection(selectedVariantId), [selectedVariantId]);
+
+  const variantPrompt = useMemo(
+    () => buildVariantPrompt({
+      basePrompt: compiled.productionPrompt,
+      recipe: selectedRecipe,
+      variant: selectedVariant,
+    }),
+    [compiled.productionPrompt, selectedRecipe, selectedVariant]
+  );
+
+  const batchEligibleEntries = useMemo(
+    () => visibleContentFiles.filter((entry) => entry.type === selectedContentType),
+    [visibleContentFiles, selectedContentType]
+  );
+
+  useEffect(() => {
+    setSelectedBatchContentPaths((current) =>
+      current.filter((path) => batchEligibleEntries.some((entry) => entry.path === path))
+    );
+  }, [batchEligibleEntries, setSelectedBatchContentPaths]);
+
+  const batchPromptItems = useMemo<BatchPromptItem[]>(() => {
+    if (!selectedBrand || !selectedProject || !selectedOutputProfile) return [];
+
+    return batchEligibleEntries
+      .filter((entry) => selectedBatchContentPaths.includes(entry.path))
+      .map((entry) => {
+        const result = compilePrompt({
+          brandId: selectedBrand.id,
+          brandLabel: selectedBrand.label,
+          projectLabel: selectedProject.label,
+          contentLabel: entry.label,
+          contentType: entry.type,
+          outputProfile: selectedOutputProfile,
+          logoAsset:
+            selectedBrand.logoAsset ||
+            `content/brands/${selectedBrand.id}/assets/${selectedBrand.id}-logo.svg`,
+          brandLogoAssets: brandLogoAssets.map((asset) => asset.path),
+          logoSourceText,
+          brandRules,
+          headerRules,
+          footerRules,
+          projectHeaderRules: editableProjectHeader,
+          projectFooterRules: editableProjectFooter,
+          projectLogoRules: editableProjectLogo,
+          logoRules,
+          typographyRules,
+          documentRules,
+          tableRules,
+          projectRules,
+          visualRules,
+          contentMarkdown: entry.path === selectedContentPath ? editableMarkdown : entry.raw,
+          contentFilename: entry.filename,
+          layoutPresetId: selectedLayoutPresetId,
+          backgroundPresetId: selectedBackgroundPresetId,
+          documentBackgroundPresetId: selectedDocumentBackgroundPresetId,
+          backgroundTheme: selectedBackgroundTheme,
+        });
+
+        return {
+          id: entry.path,
+          label: entry.label,
+          filename: entry.filename,
+          prompt: buildBatchVisualPrompt({
+            basePrompt: result.productionPrompt,
+            recipe: selectedRecipe,
+            variant: selectedVariant,
+          }),
+          outputFilename: getSuggestedOutputFilename({
+            contentPath: entry.path,
+            contentFilename: entry.filename,
+            outputProfileId: selectedOutputProfile.id,
+            outputType: selectedOutputProfile.outputType,
+            category: entry.type,
+          }),
+        };
+      });
+  }, [
+    selectedBrand,
+    selectedProject,
+    selectedOutputProfile,
+    batchEligibleEntries,
+    selectedBatchContentPaths,
+    brandLogoAssets,
+    logoSourceText,
+    brandRules,
+    headerRules,
+    footerRules,
+    editableProjectHeader,
+    editableProjectFooter,
+    editableProjectLogo,
+    logoRules,
+    typographyRules,
+    documentRules,
+    tableRules,
+    projectRules,
+    visualRules,
+    selectedContentPath,
+    editableMarkdown,
+    selectedLayoutPresetId,
+    selectedBackgroundPresetId,
+    selectedDocumentBackgroundPresetId,
+    selectedBackgroundTheme,
+    selectedRecipe,
+    selectedVariant,
+  ]);
+
+  const brandQaScorecard = useMemo(
+    () => buildBrandQaScorecard({
+      logoAsset: compiled.promptPreview.logoAsset,
+      headerText: compiled.promptPreview.headerText,
+      footerText: compiled.promptPreview.footerText,
+      visibleText: isDocumentLike ? compiled.promptPreview.bodyContent : compiled.promptPreview.visibleText,
+      selectedFile: selectedGeneratedFile,
+      outputFilename: customOutputFilename || suggestedOutputFilename,
+      promptIssues: compiled.promptLint.issues,
+    }),
+    [compiled, customOutputFilename, suggestedOutputFilename, selectedGeneratedFile, isDocumentLike]
+  );
+
+  const styleMemoryPrompt = useMemo(
+    () => buildStyleMemoryPrompt({
+      files: generatedFiles,
+      approvedIds: approvedGeneratedFileIds,
+    }),
+    [generatedFiles, approvedGeneratedFileIds]
+  );
+
+  const documentAssemblyPrompt = useMemo(() => {
+    if (!selectedBrand || !selectedProject) return "";
+    const documentEntries = allProjectContent
+      .filter((entry) => entry.type === "documents")
+      .map((entry) => ({
+        label: entry.label,
+        filename: entry.filename,
+        raw: entry.path === selectedContentPath ? editableMarkdown : entry.raw,
+      }));
+
+    return buildDocumentAssemblyPrompt({
+      brandLabel: selectedBrand.label,
+      projectLabel: selectedProject.label,
+      documentTitle: `${selectedProject.label} Document Pack`,
+      entries: documentEntries,
+    });
+  }, [selectedBrand, selectedProject, allProjectContent, selectedContentPath, editableMarkdown]);
+
   function toggleGeneratedFileSelection(fileId: string) {
     setSelectedGeneratedFileIds((current) =>
       current.includes(fileId)
@@ -963,6 +1146,52 @@ function App() {
 
   function clearGeneratedImageSelection() {
     setSelectedGeneratedFileIds([]);
+  }
+
+  function toggleBatchContentPath(path: string) {
+    setSelectedBatchContentPaths((current) =>
+      current.includes(path)
+        ? current.filter((item) => item !== path)
+        : [...current, path]
+    );
+  }
+
+  function selectAllBatchContent() {
+    setSelectedBatchContentPaths(batchEligibleEntries.map((entry) => entry.path));
+  }
+
+  function toggleApprovedGeneratedFile(fileId: string) {
+    setApprovedGeneratedFileIds((current) =>
+      current.includes(fileId)
+        ? current.filter((id) => id !== fileId)
+        : [...current, fileId]
+    );
+  }
+
+  async function handleCopyVariantPrompt() {
+    await copyToClipboard(variantPrompt, `${selectedVariant.label} variant prompt`);
+  }
+
+  async function handleCopyBatchRunManifest() {
+    if (batchPromptItems.length === 0) {
+      showToast("Select at least one content file for the batch queue.", "warning");
+      return;
+    }
+
+    await copyToClipboard(buildBatchRunManifest(batchPromptItems), "Batch generation queue");
+  }
+
+  async function handleCopyStyleMemory() {
+    await copyToClipboard(styleMemoryPrompt, "Project style memory");
+  }
+
+  async function handleCopyDocumentAssemblyPrompt() {
+    if (!documentAssemblyPrompt.trim()) {
+      showToast("No document assembly prompt is available for this project.", "warning");
+      return;
+    }
+
+    await copyToClipboard(documentAssemblyPrompt, "Document assembly prompt");
   }
 
   async function handleExportGeneratedContent(format: "pptx" | "pdf") {
@@ -1300,11 +1529,10 @@ function App() {
       <header className="hero-bar">
         <div>
           <p className="eyebrow">AI Visual Studio</p>
-          <h1>Dynamic Layout Control Desk</h1>
+          <h1>Prompt Builder Workbench</h1>
           <p>
-            Selections persist after refresh. Copy the filename, copy one
-            run-ready prompt and open ChatGPT. Document prompts include the
-            current MD source inline while visual prompts stay image-safe.
+            Move from source to ChatGPT to reviewed output faster, while
+            keeping brand chrome, exact text and project consistency locked.
           </p>
         </div>
         <div className="hero-metrics">
@@ -1314,6 +1542,171 @@ function App() {
           <div><span>{filteredGeneratedFiles.length}</span><small>filtered files</small></div>
         </div>
       </header>
+
+      <nav className="workflow-nav" aria-label="Workflow modes">
+        {workflowModes.map((mode) => (
+          <button
+            key={mode.id}
+            type="button"
+            className={workflowMode === mode.id ? "active" : ""}
+            onClick={() => setWorkflowMode(mode.id)}
+          >
+            <strong>{mode.label}</strong>
+            <span>{mode.summary}</span>
+          </button>
+        ))}
+      </nav>
+
+      <section className="panel workflow-panel">
+        {workflowMode === "create" && (
+          <div className="workflow-grid">
+            <div className="workflow-card">
+              <span>Prompt recipe</span>
+              <label className="field">
+                <select value={selectedRecipeId} onChange={(event) => setSelectedRecipeId(event.target.value)}>
+                  {promptRecipes.map((recipe) => (
+                    <option key={recipe.id} value={recipe.id}>{recipe.label}</option>
+                  ))}
+                </select>
+              </label>
+              <p>{selectedRecipe.instruction}</p>
+              <small>Profile: {selectedRecipe.outputProfileId} | Density: {selectedRecipe.densityTolerance}</small>
+            </div>
+
+            <div className="workflow-card">
+              <span>Variant Studio</span>
+              <label className="field">
+                <select value={selectedVariantId} onChange={(event) => setSelectedVariantId(event.target.value)}>
+                  {variantDirections.map((variant) => (
+                    <option key={variant.id} value={variant.id}>{variant.label}</option>
+                  ))}
+                </select>
+              </label>
+              <p>{selectedVariant.emphasis}</p>
+              <button className="primary-button" type="button" onClick={handleCopyVariantPrompt}>Copy variant prompt</button>
+            </div>
+
+            <div className="workflow-card wide-card">
+              <span>Document Assembly Mode</span>
+              <strong>{allProjectContent.filter((entry) => entry.type === "documents").length} document source file(s)</strong>
+              <p>Build one branded Word/PDF-style pack from all project document markdown files, preserving source facts and tables.</p>
+              <button className="secondary-button" type="button" onClick={handleCopyDocumentAssemblyPrompt}>Copy assembly prompt</button>
+            </div>
+          </div>
+        )}
+
+        {workflowMode === "run" && (
+          <div className="workflow-grid">
+            <div className="workflow-card primary-workflow-card">
+              <span>One-click ChatGPT run lane</span>
+              <strong>{selectedContentEntry?.label || "No content selected"}</strong>
+              <p>{isImageOutput ? "Prompt, filename, ChatGPT tab, logo reminder, latest-download import and preview refresh in one guided flow." : "Copy the run-ready prompt and open ChatGPT for document, PDF, text or email generation."}</p>
+              <div className="button-row">
+                <button className="primary-button" type="button" onClick={isImageOutput ? openAssistModal : handleCopyPromptAndOpenChatGPT}>{isImageOutput ? "Start run lane" : "Copy + open ChatGPT"}</button>
+                <button className="secondary-button" type="button" onClick={handleCopyPromptAndOpenChatGPT}>Copy + open</button>
+              </div>
+            </div>
+
+            <div className="workflow-card">
+              <span>Run target</span>
+              <strong>{normalizeAssistVersionLabel(assistTargetVersion || selectedGeneratedVersion || "Version 1.0")}</strong>
+              <p>{normalizeAssistImageFilename(customOutputFilename || suggestedOutputFilename)}</p>
+              <button className="secondary-button" type="button" onClick={handleCopyOutputFilename}>Copy filename</button>
+            </div>
+
+            <div className="workflow-card wide-card batch-card">
+              <span>Batch Generate Deck / Pack</span>
+              <div className="batch-actions">
+                <strong>{batchPromptItems.length} selected</strong>
+                <button className="secondary-button compact-button" type="button" onClick={selectAllBatchContent}>Select all visible</button>
+                <button className="primary-button compact-button" type="button" onClick={handleCopyBatchRunManifest}>Copy batch queue</button>
+              </div>
+              <div className="batch-list">
+                {batchEligibleEntries.map((entry) => (
+                  <label key={entry.path} className="batch-item">
+                    <input
+                      type="checkbox"
+                      checked={selectedBatchContentPaths.includes(entry.path)}
+                      onChange={() => toggleBatchContentPath(entry.path)}
+                    />
+                    <span>{entry.label}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {workflowMode === "review" && (
+          <div className="workflow-grid">
+            <div className="workflow-card">
+              <span>Brand QA Scorecard</span>
+              <strong>{brandQaScorecard.score}/100</strong>
+              <p>{brandQaScorecard.blockingCount} blocking issue(s), {brandQaScorecard.advisoryCount} advisory issue(s).</p>
+              <div className="qa-list">
+                {brandQaScorecard.items.map((item) => (
+                  <div key={item.id} className={`qa-item qa-${item.status}`}>
+                    <strong>{item.label}</strong>
+                    <small>{item.status}</small>
+                    <p>{item.detail}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="workflow-card">
+              <span>Project Style Memory</span>
+              <strong>{approvedGeneratedFileIds.length} approved example(s)</strong>
+              <p>Approved examples become future style references for composition, finish and pacing.</p>
+              <button className="primary-button" type="button" onClick={handleCopyStyleMemory}>Copy style memory</button>
+            </div>
+
+            <div className="workflow-card wide-card comparison-card">
+              <span>Output Comparison</span>
+              <strong>{selectedGeneratedFile ? selectedGeneratedFile.displayName || selectedGeneratedFile.filename : "No file selected"}</strong>
+              <p>Compare the selected generated output against the active source, suggested filename and brand QA score before exporting.</p>
+              {selectedGeneratedFile && (
+                <button
+                  className={approvedGeneratedFileIds.includes(selectedGeneratedFile.id) ? "primary-button" : "secondary-button"}
+                  type="button"
+                  onClick={() => toggleApprovedGeneratedFile(selectedGeneratedFile.id)}
+                >
+                  {approvedGeneratedFileIds.includes(selectedGeneratedFile.id) ? "Approved example" : "Approve as example"}
+                </button>
+              )}
+            </div>
+          </div>
+        )}
+
+        {workflowMode === "export" && (
+          <div className="workflow-grid">
+            <div className="workflow-card primary-workflow-card">
+              <span>Delivery pack</span>
+              <strong>{selectedExportFiles.length} export-ready visual(s)</strong>
+              <p>Export the selected PNG/JPEG visuals from the current version as PPTX or PDF.</p>
+              <div className="button-row">
+                <button className="primary-button" type="button" onClick={() => handleExportGeneratedContent("pptx")} disabled={selectedExportFiles.length === 0 || isExportingGeneratedContent}>Export PPTX</button>
+                <button className="secondary-button" type="button" onClick={() => handleExportGeneratedContent("pdf")} disabled={selectedExportFiles.length === 0 || isExportingGeneratedContent}>Export PDF</button>
+              </div>
+            </div>
+
+            <div className="workflow-card">
+              <span>Selection tools</span>
+              <strong>{exportableGeneratedImages.length} image(s) in view</strong>
+              <div className="button-row">
+                <button className="secondary-button compact-button" type="button" onClick={selectAllGeneratedImagesInVersion}>Select all</button>
+                <button className="secondary-button compact-button" type="button" onClick={clearGeneratedImageSelection}>Clear</button>
+              </div>
+            </div>
+
+            <div className="workflow-card wide-card">
+              <span>Upload target</span>
+              <strong>{targetFolder || "No upload folder resolved"}</strong>
+              <p>{selectedProject?.folder}/generated-content/{uploadCategory}/</p>
+            </div>
+          </div>
+        )}
+      </section>
 
       <main className="workspace-grid">
         <aside className="panel sidebar-panel">
@@ -1683,6 +2076,15 @@ function App() {
                         <small>{categoryLabel(file.category)} | {file.fileType} | {formatFileSize(file.sizeBytes)}</small>
                         <code>{file.generatedRelativePath}</code>
                       </button>
+                      {workflowMode === "review" && (
+                        <button
+                          type="button"
+                          className={approvedGeneratedFileIds.includes(file.id) ? "primary-button compact-button generated-approve" : "secondary-button compact-button generated-approve"}
+                          onClick={() => toggleApprovedGeneratedFile(file.id)}
+                        >
+                          {approvedGeneratedFileIds.includes(file.id) ? "Approved" : "Approve"}
+                        </button>
+                      )}
                     </div>
                   ))}
                 </div>

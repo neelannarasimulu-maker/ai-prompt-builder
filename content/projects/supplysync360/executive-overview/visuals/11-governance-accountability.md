@@ -1,12 +1,12 @@
 ## Intent
 
-Show how SupplySync360 strengthens governance, ownership and accountability.
+Show how SupplySync360 strengthens governance, ownership and accountability without making operations more complex.
 
 ## Visible Text
 
-Governance and Accountability
+### Governance and Accountability
 
-Operational excellence requires visibility and ownership.
+### Operational excellence requires visibility and ownership.
 
 SupplySync360 provides workflow control, role-based access, escalation paths, approval processes and auditability.
 
@@ -16,14 +16,24 @@ Every action can be tracked from identification through resolution.
 
 Teams can see what changed, who owns the next step, what is overdue and what has been closed.
 
-The result is stronger governance without increasing operational complexity.
+### Governance signals
+Ownership
+Approvals
+Escalations
+Audit trails
+Exception history
+Closure evidence
+
+### Stronger governance without increasing operational complexity.
 
 ## Image Brief
 
-Executive governance visual showing actions, ownership, escalation and closure connected through a traceable operating framework.
+Create an executive governance visual showing actions, ownership, escalation and closure connected through a traceable operating framework.
 
-The visual should communicate confidence, control and accountability.
+Use layered evidence cards, workflow paths, ownership nodes and executive oversight cues to communicate control and accountability without feeling bureaucratic.
 
-Use layered evidence cards, workflow paths and executive oversight cues without making the image feel bureaucratic.
+The composition should show a clean chain from issue identification to owner assignment, escalation, approval, resolution and closure evidence.
 
-No readable documents, legal text, fake dashboards or generic compliance icons.
+Use teal/deep-teal signal paths, soft evidence panels and one restrained yellow overdue or escalation cue.
+
+No readable documents, legal text, fake compliance dashboards, generic shield/check icons or cluttered administrative imagery.

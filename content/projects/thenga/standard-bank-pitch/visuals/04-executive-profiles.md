@@ -8,9 +8,10 @@ Demonstrate leadership depth and execution capability.
 ### Leadership Experience Built Across Large-Scale Customer, Data and Transaction Ecosystems
 
 ### Raymond Mahlangu (MBA Henley)
-Chief Executive & Founder
+Founder & Chief Executive Officer 
+Lead on Oncor.
 
-30 years | Former Group CDAO: Sanlam, Alexander Forbes | Vodacom
+30 years of business leadership | Former Group CDAO: Sanlam, Alexander Forbes | Vodacom
 Enterprise Value: R382.7M delivered (R156.7M realised + R226M pipeline)
 
 Key Experience:
@@ -18,10 +19,16 @@ Key Experience:
 • Data-driven decision making and operational optimisation
 • Business transformation and performance improvement
 
-### Tim Vermaak
-Technology & Platform Leadership
+### Joey Moatse
+Chief Financial Officer
 
-Experienced technology executive with expertise in platform architecture, digital solutions, software delivery and enterprise technology execution.
+Extensive experience in corporate finance.
+
+### Tim Vermaak
+Chief of Staff 
+
+
+Experienced technology executive with expertise in strategic implementations, platform architecture, digital solutions, software delivery and enterprise technology execution.
 
 Key Experience:
 • Enterprise platform development
@@ -30,9 +37,9 @@ Key Experience:
 • Scalable digital ecosystem enablement
 
 ### Gavin van Wyk
-Commercial & Ecosystem Development
+Chief Applied AI Product Officer
 
-Experienced business leader focused on commercial growth, strategic partnerships and market development.
+Experienced business leader focused on commercial growth, strategic partnerships and market development with deep insight in platform and product vision.
 
 Key Experience:
 • Business development and growth strategies
@@ -40,8 +47,9 @@ Key Experience:
 • Commercial execution and route-to-market development
 • Stakeholder engagement and relationship management
 
-### Mpake
-Community & Economic Participation
+### Mphake Manyatshe
+Healthcare Product Owner
+Lead on Ulti-care.
 
 Focused on community activation, economic participation and inclusive growth initiatives.
 
@@ -52,13 +60,13 @@ Key Experience:
 • Inclusive growth and development initiatives
 
 ### Neelan Narasimulu (eMBA Quantic)
-Executive Lead
+Chief Financial Production Officer
+Lead on SupplySync360.
 
-30+ years | ex-CEO, ex-CIO Sanlam Group, Ninety One, Standard Bank |  Payments, Data, Technology, Artificial Intelligence, Entrepreneur driving growth and digital transformation.
+30+ years in financial practices and innovation | ex-CEO, ex-CIO Sanlam Group, Ninety One, Standard Bank |  Payments, Data, Technology, Artificial Intelligence, Entrepreneur driving growth and digital transformation.
 
 Key Experience:
-• Leadership of large-scale payment and transaction ecosystems
-• Executive roles across recognised financial institutions
+• Leadership in executive roles of large-scale payment and transaction ecosystems
 • Experience building customer, data and technology platforms
 • Deep understanding of market development and ecosystem growth
 

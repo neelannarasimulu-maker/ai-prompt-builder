@@ -2,6 +2,6 @@ RainFin: financial technology and programme-operations brand for regulated walle
 
 Palette: navy #173A59, rain blue #1EA7E1, sky blue #36B3E7, deep teal #063543, white #FFFFFF, soft mist #F5FAFC, AVBOB green #007A33, Ninety One gold #F2A51A.
 
-Style: premium advisory-forum design with soft but clearly branded navy, teal and rain-blue gradients. Use medium-light to medium background depth, gentle edge shading, subtle flow texture and white or mist readable content cards. AVBOB green and Ninety One gold should be restrained accents only for status, completion or partner emphasis. Avoid backgrounds that are too dark, black-heavy, overly graphite, flat white, washed out, neon or dashboard-like.
+Style: premium advisory-forum design with vibrant but controlled navy, teal and rain-blue gradients. Use light-to-medium background depth, luminous flow texture and white or mist readable content cards. Light, balanced and dark backgrounds should all retain brand colour and gradients; balanced backgrounds should stay brighter than dark while using saturated rain-blue/navy bands, connector paths and accent glows. AVBOB green and Ninety One gold should be controlled accents only for status, completion or partner emphasis. Avoid backgrounds that are too dark, black-heavy, overly graphite, flat white, washed out, beige/grey bland, neon or dashboard-like.
 
 Typography: clean executive sans-serif. Use strong headings, clear hierarchy, readable cards and generous spacing.

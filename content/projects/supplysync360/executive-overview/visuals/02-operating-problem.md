@@ -4,9 +4,9 @@ Show that the real supply chain challenge is fragmented execution rather than a 
 
 ## Visible Text
 
-The Operating Problem
+### The Operating Problem
 
-Supply chains are increasingly complex.
+### Supply chains are increasingly complex.
 
 Suppliers, inventory locations, branches, warehouses, fulfilment teams and customers generate thousands of operational signals every day.
 
@@ -16,16 +16,20 @@ Teams spend valuable time chasing information instead of resolving issues.
 
 Decisions are frequently made after stock, service or supplier problems have already created operational impact.
 
+### Fragmentation turns signals into delay.
+
 The result is avoidable stockouts, excess inventory, supplier friction, delayed execution and reduced visibility.
 
-The cost of fragmentation grows as organisations scale.
+### The cost of fragmentation grows as organisations scale.
 
 ## Image Brief
 
-Executive operations visual showing fragmented supply chain activities across suppliers, inventory, demand and fulfilment functions.
+Create an executive operations visual showing multiple supply chain functions generating signals that are disconnected, delayed or manually reconciled.
 
-Visualise disconnected signals, manual coordination and operational drag gradually converging toward a more controlled environment.
+Represent suppliers, inventory locations, branch networks, fulfilment teams and customer demand as separate but related operating zones.
 
-The image should create recognition of the problem without feeling chaotic or negative.
+The composition should show operational drag and information chasing without becoming chaotic or negative.
 
-Use a premium SupplySync360 executive design style.
+Use a fragmented-to-controlled visual pathway, with faint disconnected signal threads beginning to converge toward a more disciplined control environment.
+
+Use premium SupplySync360 styling with teal, deep teal, mist and restrained graphite depth. No readable screens, fake metrics, gloomy crisis imagery or clutter.

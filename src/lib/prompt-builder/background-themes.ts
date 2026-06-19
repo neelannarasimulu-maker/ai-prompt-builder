@@ -10,27 +10,27 @@ export type BackgroundThemeDefinition = {
 export const backgroundThemes: BackgroundThemeDefinition[] = [
   {
     id: "balanced",
-    label: "Soft Premium Gradient",
+    label: "Balanced In-Between",
     visualPrompt:
-      "Soft premium gradient background: blend the brand palette into a calm, light-leaning executive canvas with a bright readable centre. Use richer colour only as soft edge depth, header treatment, corner shaping or restrained accents. Do not merge dark and light areas into a heavy split background, and avoid black-heavy or cave-dark treatment.",
+      "Balanced in-between brand background: create a vibrant light-to-medium executive canvas with saturated brand-colour gradient bands, luminous accent lines, layered radial/linear gradients, subtle signal texture and shaped header/footer depth. It must carry obvious brand colour and energy while keeping the main reading zones bright through translucent mist panels or clean content cards. Use colour-rich edges, corner geometry, flowing connectors and accent glows; avoid beige/grey blandness, flat white emptiness, muddy graphite and dark-dominant treatment.",
     documentPrompt:
-      "Soft premium page background: use a clean white or pale brand-tinted page canvas with restrained gradient accents, light header/footer bands and strong print readability.",
+      "Balanced in-between page background: use a bright brand-tinted page canvas with vibrant but controlled gradient bands, coloured section headers, subtle signal texture and clean content panels. It should feel branded and energetic while staying print-readable.",
   },
   {
     id: "light",
     label: "Light",
     visualPrompt:
-      "Light brand background: use white, mist, soft sand or pale brand tints with restrained brand accents, clean panels and maximum readability.",
+      "Light brand background: use a bright, colour-washed canvas with clear brand tints, soft multi-stop gradients, luminous accent strokes and subtle texture. Light must not mean plain white, beige, grey or empty canvas; it should still show brand colour, gradient movement and premium energy while keeping text zones very readable.",
     documentPrompt:
-      "Light page background: use a bright white or pale brand-tinted A4 canvas, clean margins, light table shading and minimal decorative depth.",
+      "Light page background: use a bright brand-tinted A4 canvas with soft gradient headers, subtle coloured table bands and clean margins. Avoid pure white emptiness unless print constraints require it.",
   },
   {
     id: "dark",
     label: "Dark",
     visualPrompt:
-      "Dark brand background: use premium brand-depth treatment with navy/charcoal or deep primary tones, strong contrast panels and restrained highlights, never cluttered or neon.",
+      "Dark brand background: use deep saturated brand tones with multi-stop gradients, shaded transitions, luminous brand glows, subtle texture, signal lines and lighter protected content panels. It should read dark and premium with colour and depth, never as a single flat dark colour, black block, cave-like canvas, cluttered control room or neon overload. Dark is an explicit mode, not the default balanced look.",
     documentPrompt:
-      "Dark page background: use dark brand treatment only for headers, cover bands or section dividers; keep body pages readable with light content areas and high contrast.",
+      "Dark page background: use gradient dark brand treatment for covers, headers, dividers or section bands, with lighter protected body areas for readability. Use rich colour transitions and avoid single-colour dark pages.",
   },
 ];
 
@@ -50,7 +50,7 @@ export function inferBackgroundThemeFromPreset(input?: {
 }): BackgroundTheme {
   const value = `${input?.backgroundPresetId || ""} ${input?.documentBackgroundPresetId || ""}`.toLowerCase();
 
-  if (/\b(light|white|mist|clean|document_canvas|clean_white|clean_a4)\b/.test(value)) return "light";
+  if (/\b(soft_brand_depth|soft_dark_edge_light_content|light|white|mist|clean|document_canvas|clean_white|clean_a4)\b/.test(value)) return "light";
   if (/\b(dark|midnight|graphite|deep)\b/.test(value)) return "dark";
   return "balanced";
 }

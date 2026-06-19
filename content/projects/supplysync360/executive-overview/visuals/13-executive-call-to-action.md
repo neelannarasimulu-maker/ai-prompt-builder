@@ -1,12 +1,12 @@
 ## Intent
 
-Close the executive overview with a clear pathway to proving value.
+Close the executive overview with a clear pathway to proving value through a focused control review.
 
 ## Visible Text
 
-Start With One Control Problem
+### Start With One Control Problem
 
-Do not begin with a large transformation.
+### Do not begin with a large transformation.
 
 Start with one measurable operating challenge.
 
@@ -20,11 +20,11 @@ Measure the improvement.
 
 Scale based on evidence.
 
-Recommended next step:
+### Recommended next step
 
 A 30-minute executive control review.
 
-Contact SupplySync360
+### Contact SupplySync360
 
 admin@supplysync360.co.za
 
@@ -36,10 +36,12 @@ https://www.linkedin.com/company/supplysync360
 
 ## Image Brief
 
-Premium executive closing visual showing leadership reviewing a coordinated operating model with clear next-step momentum.
+Create a premium executive closing visual showing leadership reviewing a coordinated operating model with clear next-step momentum.
 
-Provide clean space for contact details and a strong executive call to action.
+Use a clean call-to-action composition with a strong left or centre content zone, a focused control-review pathway and clear space for contact details.
 
-Use a confident SupplySync360 executive style with subtle teal signal paths and one yellow next-step marker.
+Represent the proof pathway as baseline, control gap, operating model, measured improvement and evidence-based scaling.
 
-No readable screens, fake dashboards, cluttered visual elements or unrelated logos.
+Use confident SupplySync360 executive styling with subtle teal signal paths, light content panels and one yellow next-step marker.
+
+No readable screens beyond the supplied visible text, fake dashboards, cluttered visual elements, unrelated logos or exaggerated transformation imagery.

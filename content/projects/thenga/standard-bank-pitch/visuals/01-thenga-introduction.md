@@ -16,7 +16,9 @@ Thenga is building trusted participation infrastructure that connects communitie
 By enabling trust, participation, value exchange and measurable outcomes, Thenga creates practical pathways for economic inclusion and localised wealth creation.
 
 ### One Ecosystem. Many Worlds.
+### Built in South Africa. Designed for Africa. Relevant Globally.
 ### Shared Infrastructure. Real Impact.
+
 ### Standard Bank Strategic Discussion
 
 ## Image Brief

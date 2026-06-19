@@ -29,6 +29,10 @@ Strategic Partnerships
 Institutional Participation
 Regional Expansion
 
+Replicate the Digital Spine model across priority African markets through strategic partnerships and ecosystem-led growth.
+
+The Thenga model is designed to be adaptable across industries, geographies and economic ecosystems, creating opportunities for regional expansion and long-term global relevance.
+
 ### Trusted Participation Infrastructure Ready For Growth
 
 ## Image Brief

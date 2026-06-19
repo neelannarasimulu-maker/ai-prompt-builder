@@ -1,4 +1,5 @@
 ## Intent
+
 Establish executive credibility.
 
 ## Visible Text
@@ -7,21 +8,24 @@ Establish executive credibility.
 
 ### Experienced Leaders Across Financial Services, Technology, Data and Economic Development
 
-Building trusted participation infrastructure requires expertise across technology, finance, governance, operations and ecosystem development.
+Building trusted participation infrastructure requires a fusion of high-level finance, cutting-edge technology, and robust governance.
 
-The Thenga leadership team combines decades of experience across banking, insurance, payments, data, technology and commercial growth. This experience provides the foundation required to build platforms, create partnerships and activate large-scale participation ecosystems.
+The Thenga leadership team combines decades of experience to build intelligent, secure platforms. We leverage AI and predictive analytics to activate participation ecosystems that are resilient, commercially viable, and privacy-first.
 
 ### Leadership Strengths
 
-Financial Services & Payments – deep experience across banking, insurance, payments and financial inclusion.
+Financial Services & Payments – Deep expertise in banking, insurance, and payments, specialising in digital-first inclusion and the modernisation of legacy financial systems.
 
-Technology & Data – designing, delivering and scaling enterprise technology and customer ecosystems.
+AI, Analytics & Data Intelligence – Harnessing Machine Learning (ML) and Advanced Analytics to drive automated decisioning, predictive insights, and personalised customer experiences at scale.
 
-Ecosystem Development – connecting organisations, communities and partners around shared objectives.
+Secure Technology & Infrastructure – Designing cloud-native, "Secure-by-Design" enterprise architectures. Focused on technical resilience, cybersecurity, and seamless API integrations.
 
-Commercial Growth – creating routes to market and sustainable growth models.
+Commercial Growth – Creating strategic routes to market and sustainable growth models that bridge the gap between technical innovation and revenue generation.
 
-Governance & Compliance – supporting institutional engagement and long-term sustainability.
+Ecosystem Development & Interoperability – Connecting organisations and communities through smart, interoperable platforms that foster collaborative growth and shared value.
+
+Privacy, Ethics & Governance – Leading the way in AI Ethics, Data Sovereignty, and global regulatory compliance (GDPR/POPIA) to ensure long-term institutional trust.
 
 ## Image Brief
+
 Executive capability pillars feeding into the Thenga Digital Spine.

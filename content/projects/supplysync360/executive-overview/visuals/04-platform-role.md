@@ -1,10 +1,12 @@
 ## Intent
 
-Define SupplySync360 as the operating layer that connects systems, suppliers, inventory and people without forcing a disruptive replacement of existing processes.
+Define SupplySync360 as the operating layer that connects systems, suppliers, inventory and people without forcing disruptive replacement of existing processes.
 
 ## Visible Text
 
-What SupplySync360 Is
+### What SupplySync360 Is
+
+### A practical control layer for modern supply chain execution.
 
 SupplySync360 sits between existing systems and operational teams.
 
@@ -16,14 +18,16 @@ The platform provides visibility, prioritisation, ownership and accountability a
 
 It helps organisations coordinate what happens next, not simply report what happened yesterday.
 
-A practical control layer for modern supply chain execution.
+### Connect what exists. Coordinate what happens next.
 
 ## Image Brief
 
-Premium operating-layer visual showing systems, suppliers, inventory locations, fulfilment teams and leadership connected through a central control layer.
+Create a premium operating-layer architecture visual showing existing systems, supplier channels, inventory locations, fulfilment teams and leadership connected through a central SupplySync360 control layer.
 
-Use a modern executive architecture style with strong visual clarity and coordinated signal flows.
+The scene should communicate overlay, integration, coordination and operational alignment rather than replacement.
 
-The visual should communicate overlay, integration and coordination rather than system replacement.
+Use layered horizontal or stacked architecture: source systems and operational teams below, SupplySync360 as the coordinating layer, leadership/action evidence above.
 
-No readable text, fake dashboards, random logos or cluttered interface details.
+Use strong visual clarity, subtle teal signal flows, light content panels, graphite edge depth and restrained yellow emphasis for the next action.
+
+No readable system names, random logos, fake dashboards, technical code screens or cluttered interface details.

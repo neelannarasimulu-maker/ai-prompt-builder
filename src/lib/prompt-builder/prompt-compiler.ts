@@ -386,7 +386,10 @@ function buildVisualDeckStructureLock(input: {
     "Fixed footer zone: 6-8% of slide height. Use a consistent brand-aligned footer bar or footer band with restrained accent treatment.",
     `Footer lock: use exactly "${input.resolvedFooterText}" in 8-9pt equivalent footer text, centred or evenly spaced; no footer icons, no wording changes.`,
     "Only the body area may vary. Keep body layouts on the same invisible grid with consistent margins, title hierarchy, panel style, corner radius, shadow depth, line weights and executive typography.",
-    "Create variation only through body layout, imagery, diagram structure, background texture, icon selection and content composition.",
+    "Create meaningful variation through body layout, imagery, diagram structure, background texture, icon selection and content composition.",
+    "Do not repeat the same text-left/image-right block composition across slides. Use centre-stage diagrams, orbit maps, vertical journeys, horizontal timelines, full-width hero scenes, outcome walls, signal funnels and layered architecture where the content calls for it.",
+    "Use bold typographic hierarchy, coloured emphasis, highlight bands, callout pills, accent rules and contrast panels to make important exact words stand out without changing the wording.",
+    "Use striking dimensional imagery, vibrant gradients, luminous brand accents and content-specific diagrams; avoid flat unstyled text blocks and generic stock-style visuals.",
     "Before finalizing, verify header, footer, logo placement, logo size, outer margins and footer wording match the deck master.",
   ].join("\n");
 }
@@ -534,7 +537,8 @@ function buildOutputDirection(input: {
       `Layout: ${input.plan.layoutPresetId}. ${limitWords(firstSentence(input.resolvedLayoutPreset.prompt), 24)}`,
       `Background theme: ${input.resolvedBackgroundTheme.label}. ${input.resolvedBackgroundTheme.visualPrompt}`,
       `Background preset refinement: ${input.plan.backgroundPresetId}. ${limitWords(firstSentence(input.resolvedBackgroundPreset.prompt), 18)}`,
-      input.imageBrief ? `Scene: ${limitWords(input.imageBrief, 42)}` : "",
+      `Composition zones: ${input.plan.zones.filter((zone) => zone.name !== "header" && zone.name !== "footer").map((zone) => `${zone.name} (${zone.purpose})`).join(" | ")}`,
+      input.imageBrief ? `Scene: ${limitWords(input.imageBrief, 90)}` : "",
     ].filter(Boolean).join("\n");
   }
 
@@ -632,14 +636,17 @@ function buildVisualFinalRules(hasLogo: boolean, deckLocked = false): string {
     "Use only the Visible Text as on-image text.",
     "Use Intent, Layout Hint, Background Hint and Image Brief as guidance only.",
     "Do not add, remove, rewrite or reorder the supplied visible wording.",
+    "You may style exact visible words with bold weight, larger scale, colour, highlight bands, callout pills or accent rules, but the wording must remain exact.",
     "Preserve numeric values, labels, bullets and grouping exactly as supplied.",
     "Use the brand, header, footer, typography and style rules as rendering guidance only, not as visible content.",
     "Create a finished image only. Do not include document-generation instructions in the output.",
     hasLogo ? "Use the supplied official logo asset where supported." : "Use clean text branding if no logo asset is supplied.",
     "Do not invent a replacement logo.",
     deckLocked ? "Vary only the body area; never vary header structure, footer structure, logo placement, logo size, outer frame or master margins." : "",
+    deckLocked ? "Avoid repeating a generic left text panel plus right image panel unless that exact layout is requested. Choose a content-specific composition from the layout plan." : "",
     deckLocked ? "Before finalizing, verify fixed header, footer, logo placement, outer margins and footer wording match the deck master." : "",
-    "Avoid unsupported claims, fake metrics, fake dashboards and generic stock-style visuals.",
+    "Use striking dimensional imagery, vibrant gradients, luminous brand accents and content-specific diagrams where appropriate.",
+    "Avoid unsupported claims, fake metrics, fake dashboards, generic stock-style visuals and flat unstyled text blocks.",
   ]).map((line) => `- ${line}`).join("\n");
 }
 
@@ -848,7 +855,7 @@ export function compilePrompt(input: CompilePromptInput): CompiledPromptResult {
     plan: dynamicLayoutPlan,
   });
 
-  const warnings = [...(dynamicLayoutPlan.warnings || [])];
+  const warnings: string[] = [];
   if (!intent) warnings.push("Missing Intent section.");
   if (input.outputProfile.outputType === "image" && !visibleText) warnings.push("Missing Visible Text section.");
   if (input.outputProfile.outputType === "image" && !imageBrief) warnings.push("Missing Image Brief section.");
@@ -1051,7 +1058,7 @@ export function compilePrompt(input: CompilePromptInput): CompiledPromptResult {
   });
 
   for (const issue of promptLint.issues) {
-    if (issue.severity !== "info") warnings.push(issue.message);
+    if (issue.severity !== "info" && issue.code !== "image-prompt-too-long") warnings.push(issue.message);
   }
 
   const documentPromptParts: DocumentPromptParts = {

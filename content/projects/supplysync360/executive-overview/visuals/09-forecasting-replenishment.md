@@ -4,9 +4,9 @@ Demonstrate how SupplySync360 supports more informed planning and replenishment 
 
 ## Visible Text
 
-Forecasting and Replenishment
+### Forecasting and Replenishment
 
-Demand patterns change continuously.
+### Demand patterns change continuously.
 
 SupplySync360 combines inventory position, movement trends, supplier behaviour and operational signals to improve planning decisions.
 
@@ -16,14 +16,25 @@ Forecasting becomes a practical planning tool rather than a reactive exercise.
 
 Better planning reduces waste, protects availability and improves operational efficiency.
 
-Forecasting is not a crystal ball. It is an earlier planning signal.
+### Planning inputs
+Inventory position
+Movement trends
+Supplier behaviour
+Demand signals
+Operational exceptions
+
+### Forecasting is not a crystal ball. It is an earlier planning signal.
 
 ## Image Brief
 
-Premium forecasting visual showing demand, supply and replenishment signals flowing through a forward-looking planning framework.
+Create a premium forecasting visual showing demand, supply and replenishment signals flowing through a forward-looking planning framework.
+
+Use a planning horizon composition with demand curves, stock movement cues, supplier timing cues and replenishment pathways, but without readable chart text or fake numbers.
 
 The visual should communicate confidence, foresight and operational preparedness.
 
-Use subtle curves, planning horizons, stock movement and supplier timing cues.
+Show how inventory position, movement trends, supplier behaviour, demand signals and operational exceptions converge into earlier replenishment insight.
 
-No readable charts, fake numbers, financial trading screens or generic analytics dashboards.
+Use subtle curved signal paths, teal/deep-teal gradients, light executive panels and one restrained yellow early-warning marker.
+
+No financial trading screens, fake metrics, generic analytics dashboards or cluttered chart walls.
