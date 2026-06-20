@@ -1,7 +1,7 @@
 import type { GeneratedContentFile } from "./project-generated-content-api";
 import type { PromptLintIssue } from "./prompt-lint";
 
-export type WorkflowMode = "create" | "run" | "review" | "export";
+export type WorkflowMode = "create" | "run" | "review" | "export" | "distribution";
 
 export type PromptRecipe = {
   id: string;
@@ -48,6 +48,7 @@ export const workflowModes: Array<{ id: WorkflowMode; label: string; summary: st
   { id: "run", label: "Run", summary: "Move faster through ChatGPT, filenames, attachments and imports." },
   { id: "review", label: "Review", summary: "Check brand QA, compare versions and approve examples." },
   { id: "export", label: "Export", summary: "Select generated assets and build delivery packs." },
+  { id: "distribution", label: "Distribution", summary: "Plan delivery and record where generated content was sent." },
 ];
 
 export const promptRecipes: PromptRecipe[] = [
@@ -81,11 +82,11 @@ export const promptRecipes: PromptRecipe[] = [
   {
     id: "linkedin_launch",
     label: "LinkedIn Launch",
-    outputProfileId: "linkedin_post_text",
-    layoutFamily: "social launch",
+    outputProfileId: "linkedin_asset_4_5",
+    layoutFamily: "social visual launch",
     densityTolerance: "low",
     tone: "human, credible and commercially sharp",
-    instruction: "Prioritize a strong opening, accessible value proposition, proof points and concise call to action.",
+    instruction: "Prioritize a strong mobile-readable visual; keep the separate LinkedIn Post Text caption out of the generated asset.",
   },
   {
     id: "executive_one_pager",
@@ -169,10 +170,17 @@ export function buildBatchVisualPrompt(input: {
   variant: VariantDirection;
 }): string {
   return [
-    buildVariantPrompt(input),
+    input.basePrompt.trim(),
     "",
     "BATCH-ONLY VISUAL QUALITY LOCK",
     "This extra lock applies only to batch generation. It must not be copied back into the individual prompt.",
+    `Recipe: ${input.recipe.label}. Tone: ${input.recipe.tone}.`,
+    `Recipe instruction: ${input.recipe.instruction}`,
+    `Variant: ${input.variant.label}. Emphasis: ${input.variant.emphasis}.`,
+    `Layout treatment: ${input.variant.layoutTreatment}.`,
+    `Image treatment: ${input.variant.imageTreatment}.`,
+    "Keep the locked brand chrome unchanged: logo, header, footer, margins, colours, typography hierarchy and exact visible/source text must remain faithful.",
+    "Vary only the body composition, supporting imagery, diagram structure, background treatment and content grouping.",
     "Scene lock: the base prompt's Scene, Image Brief, background theme and visual rules remain primary. Do not downgrade rich scene guidance into placeholders, wireframes, flat icons, simple generic diagrams, or repeated decorative geometry.",
     "If the base prompt asks for dimensional imagery, a hero scene, operational environment, product scene, or content-specific visual metaphor, render that full-quality scene while applying the variant only to pacing and emphasis.",
     "Text layout lock: treat the exact visible text as designed slide typography, not a pasted text block. Use a disciplined grid, generous internal padding, readable line lengths, consistent line-height and clear paragraph spacing.",
@@ -256,7 +264,7 @@ export function buildBrandQaScorecard(input: {
 export function buildBatchRunManifest(items: BatchPromptItem[]): string {
   return [
     "BATCH GENERATION QUEUE",
-    "Run each item separately in ChatGPT. Save each output using the supplied filename, then import it into the selected project generated-content folder.",
+    "Run each item separately in ChatGPT. Save each output using the supplied filename, then import it into the selected content set's _generated/vNNN folder.",
     "Do not generate a combined contact sheet, summary deck, wireframe deck, placeholder deck or simplified preview. Each item is a separate finished full-quality visual.",
     "For every item, preserve that item's Scene/Image Brief, background theme, exact visible text, header, footer and logo rules. Keep the deck chrome consistent, but make the body imagery content-specific and dimensional.",
     "",

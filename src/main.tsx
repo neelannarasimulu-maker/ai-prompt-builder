@@ -1,6 +1,10 @@
 import React, { useEffect, useMemo, useState } from "react";
 import ReactDOM from "react-dom/client";
 import "./styles.css";
+import {
+  DistributionPanel,
+  type DistributionPrefill,
+} from "./features/distribution/distribution-panel";
 
 import { brands, projects, type BrandAssetItem } from "./lib/prompt-builder/registry";
 import { outputProfiles } from "./lib/prompt-builder/output-profiles";
@@ -14,7 +18,9 @@ import {
   generateDynamicContentTags,
 } from "./lib/prompt-builder/dynamic-content-tags";
 import { parseMarkdownSections } from "./lib/prompt-builder/content-sections";
+import { isIgnoredContentPath, parseContentSetPath } from "./lib/prompt-builder/content-set-paths";
 import {
+  getDeliveryPackFilenameBase,
   getSuggestedOutputFilename,
   replaceExtension,
 } from "./lib/prompt-builder/output-naming";
@@ -37,6 +43,7 @@ import {
   getGeneratedVersionSortValue,
   getProjectGeneratedContentFolder,
   listProjectGeneratedContent,
+  renderProjectDocument,
   saveContentSourceFile,
   uploadProjectGeneratedContent,
   type GeneratedContentCategory,
@@ -58,6 +65,19 @@ import {
   type BatchPromptItem,
   type WorkflowMode,
 } from "./lib/prompt-builder/workflow-features";
+import {
+  buildProjectScaffold,
+  createProject,
+  getStorageStatus,
+  listRuntimeProjects,
+  loadRuntimeProject,
+  slugifyProjectName,
+  updateStorageRoot,
+  type CreateProjectInput,
+  type ProjectWorkflow,
+  type RuntimeContentFile,
+  type RuntimeProject,
+} from "./lib/prompt-builder";
 
 type BrandItem = {
   id: string;
@@ -83,11 +103,13 @@ type OutputProfileItem = {
   format?: string;
   useCase?: string;
   instruction?: string;
+  typography?: string;
 };
 
 type ContentEntry = {
   path: string;
   type: string;
+  contentSet: string;
   filename: string;
   label: string;
   raw: string;
@@ -101,10 +123,52 @@ type Toast = {
 
 type PromptView = "production" | "debug" | "actions" | "contract";
 
+const projectWorkflowOptions: Array<{ id: ProjectWorkflow; label: string; description: string }> = [
+  { id: "presentation", label: "Presentation", description: "Visual rules and a structured opening visual, with optional supporting slides." },
+  { id: "document_pack", label: "Document pack", description: "Project document rules and an attachment-first main document source." },
+  { id: "linkedin_campaign", label: "LinkedIn campaign", description: "A written post with an optional mobile visual source." },
+  { id: "mixed", label: "Mixed project", description: "Visual, document and LinkedIn starter sources in one project." },
+];
+
+function newProjectDraft(brand?: BrandItem): CreateProjectInput {
+  return {
+    brandId: brand?.id || "",
+    brandName: brand?.label || "",
+    projectName: "",
+    projectSlug: "",
+    workflow: "presentation",
+    audience: "",
+    purpose: "",
+    tone: "Professional, clear and aligned to the selected brand.",
+    headerText: brand?.label || "",
+    footerText: brand?.label || "",
+    logoAsset: brand?.logoAssets[0]?.path || brand?.logoAsset || "",
+    enabledOptionalFiles: [],
+  };
+}
+
 function emptyPromptLint() {
   return {
     issues: [],
     fidelityScore: 0,
+  };
+}
+
+function emptyPromptPreview() {
+  return {
+    visibleText: "",
+    bodyContent: "",
+    guidance: "",
+    headerText: "",
+    footerText: "",
+    brandColours: "",
+    logoAsset: "",
+    backgroundTheme: "",
+    detectedSections: [],
+    ignoredLegacySections: [],
+    coverPageContent: "",
+    tableOfContentsContent: "",
+    linkedinPostText: "",
   };
 }
 
@@ -244,7 +308,7 @@ function getProjectContentEntries(project: ProjectItem): ContentEntry[] {
 
   return Object.entries(markdownMap)
     .filter(([path]) => path.startsWith(prefix))
-    .filter(([path]) => !path.includes("/generated-content/"))
+    .filter(([path]) => !isIgnoredContentPath(path))
     .filter(([path]) => {
       const lower = path.toLowerCase();
       return (
@@ -255,19 +319,19 @@ function getProjectContentEntries(project: ProjectItem): ContentEntry[] {
         !lower.endsWith("/logo.md")
       );
     })
-    .map(([path, raw]) => {
-      const relative = path.slice(prefix.length);
-      const parts = relative.split("/");
-      const type = parts.length > 1 ? parts[0] : "content";
-      const filename = parts[parts.length - 1];
+    .flatMap(([path, raw]): ContentEntry[] => {
+      const parsed = parseContentSetPath(path);
+      if (!parsed || parsed.isDescriptor) return [];
+      const { type, contentSet, filename } = parsed;
 
-      return {
+      return [{
         path,
         type,
+        contentSet,
         filename,
         label: titleFromFileName(filename),
         raw,
-      };
+      }];
     })
     .sort((a, b) => {
       if (a.type !== b.type) return a.type.localeCompare(b.type);
@@ -313,10 +377,26 @@ function useLocalStorageState<T>(key: string, initialValue: T) {
 
 function App() {
   const brandList = brands as BrandItem[];
-  const projectList = projects as ProjectItem[];
   const profileList = outputProfiles as OutputProfileItem[];
 
+  const [runtimeProjects, setRuntimeProjects] = useState<RuntimeProject[]>([]);
+  const [runtimeFilesByProject, setRuntimeFilesByProject] = useState<Record<string, RuntimeContentFile[]>>({});
+  const projectList = useMemo(() => {
+    const merged = new Map<string, ProjectItem>();
+    for (const project of projects as ProjectItem[]) merged.set(`${project.brandId}/${project.id}`, project);
+    for (const project of runtimeProjects) merged.set(`${project.brandId}/${project.id}`, project);
+    return Array.from(merged.values()).sort((a, b) => a.label.localeCompare(b.label));
+  }, [runtimeProjects]);
+
   const [toasts, setToasts] = useState<Toast[]>([]);
+  const [storageRoot, setStorageRoot] = useState("");
+  const [storageState, setStorageState] = useState<"checking" | "available" | "read-only">("checking");
+  const localWritesAvailable = storageState === "available";
+  const [isProjectWizardOpen, setIsProjectWizardOpen] = useState(false);
+  const [projectWizardStep, setProjectWizardStep] = useState(1);
+  const [projectDraft, setProjectDraft] = useState<CreateProjectInput>(() => newProjectDraft(brandList[0]));
+  const [projectCreateError, setProjectCreateError] = useState("");
+  const [isCreatingProject, setIsCreatingProject] = useState(false);
 
   function showToast(message: string, type: Toast["type"] = "success") {
     const id = Date.now();
@@ -357,10 +437,44 @@ function App() {
     [filteredProjects, selectedProjectId]
   );
 
-  const allProjectContent = useMemo(
-    () => (selectedProject ? getProjectContentEntries(selectedProject) : []),
-    [selectedProject]
-  );
+  async function refreshRuntimeRepository() {
+    try {
+      const status = await getStorageStatus();
+      setStorageState(status.writable ? "available" : "read-only");
+      setStorageRoot(status.contentRoot || "");
+      const payload = await listRuntimeProjects();
+      setRuntimeProjects(payload.projects || []);
+    } catch {
+      setStorageState("read-only");
+    }
+  }
+
+  useEffect(() => {
+    void refreshRuntimeRepository();
+  }, []);
+
+  useEffect(() => {
+    if (!selectedProject || storageState !== "available") return;
+    void loadRuntimeProject(selectedProject.brandId, selectedProject.id)
+      .then((payload) => {
+        setRuntimeFilesByProject((current) => ({
+          ...current,
+          [`${payload.project.brandId}/${payload.project.id}`]: payload.files,
+        }));
+      })
+      .catch(() => undefined);
+  }, [selectedProjectId, selectedProject?.brandId, storageState]);
+
+  const activeRuntimeFiles = selectedProject ? runtimeFilesByProject[`${selectedProject.brandId}/${selectedProject.id}`] || [] : [];
+  const allProjectContent = useMemo(() => {
+    if (!selectedProject) return [];
+    const merged = new Map<string, ContentEntry>();
+    for (const entry of getProjectContentEntries(selectedProject)) merged.set(entry.path, entry);
+    for (const entry of activeRuntimeFiles) {
+      if (entry.type !== "project" && entry.contentSet) merged.set(entry.path, entry as ContentEntry);
+    }
+    return Array.from(merged.values()).sort((a, b) => a.type.localeCompare(b.type) || a.filename.localeCompare(b.filename));
+  }, [selectedProject, activeRuntimeFiles]);
 
   const contentTypes = useMemo(
     () => Array.from(new Set(allProjectContent.map((entry) => entry.type))),
@@ -378,9 +492,25 @@ function App() {
     }
   }, [contentTypes, selectedContentType, setSelectedContentType]);
 
-  const visibleContentFiles = useMemo(
-    () => allProjectContent.filter((entry) => entry.type === selectedContentType),
+  const contentSets = useMemo(
+    () => Array.from(new Set(allProjectContent
+      .filter((entry) => entry.type === selectedContentType)
+      .map((entry) => entry.contentSet))),
     [allProjectContent, selectedContentType]
+  );
+
+  const [selectedContentSet, setSelectedContentSet] = useLocalStorageState(
+    "promptBuilder.selectedContentSet",
+    ""
+  );
+
+  useEffect(() => {
+    if (!contentSets.includes(selectedContentSet)) setSelectedContentSet(contentSets[0] ?? "");
+  }, [contentSets, selectedContentSet, setSelectedContentSet]);
+
+  const visibleContentFiles = useMemo(
+    () => allProjectContent.filter((entry) => entry.type === selectedContentType && entry.contentSet === selectedContentSet),
+    [allProjectContent, selectedContentType, selectedContentSet]
   );
 
   const [selectedContentPath, setSelectedContentPath] = useLocalStorageState(
@@ -421,7 +551,7 @@ function App() {
   );
   const [selectedDocumentBackgroundPresetId, setSelectedDocumentBackgroundPresetId] = useLocalStorageState(
     "promptBuilder.selectedDocumentBackgroundPresetId",
-    "clean_white_form"
+    "auto_brand_document"
   );
   const [selectedBackgroundTheme, setSelectedBackgroundTheme] = useLocalStorageState<BackgroundTheme>(
     "promptBuilder.selectedBackgroundTheme",
@@ -443,9 +573,18 @@ function App() {
 
   useEffect(() => {
     if (!profileList.find((profile) => profile.id === selectedOutputProfileId)) {
-      setSelectedOutputProfileId(profileList[0]?.id ?? "landscape_image_16_9");
+      const migratedLinkedInProfile = ["linkedin_image_4_5", "linkedin_carousel_4_5"].includes(selectedOutputProfileId)
+        ? "linkedin_asset_4_5"
+        : "";
+      setSelectedOutputProfileId(migratedLinkedInProfile || profileList[0]?.id || "landscape_image_16_9");
     }
   }, [profileList, selectedOutputProfileId, setSelectedOutputProfileId]);
+
+  useEffect(() => {
+    if (!documentBackgroundPresets.find((preset) => preset.id === selectedDocumentBackgroundPresetId)) {
+      setSelectedDocumentBackgroundPresetId("auto_brand_document");
+    }
+  }, [selectedDocumentBackgroundPresetId, setSelectedDocumentBackgroundPresetId]);
 
   const suggestedOutputFilename = useMemo(
     () => getSuggestedOutputFilename({
@@ -475,14 +614,19 @@ function App() {
   const documentRules = selectedBrand ? getBrandFile(selectedBrand, "document-rules.md") : "";
   const tableRules = selectedBrand ? getBrandFile(selectedBrand, "table-rules.md") : "";
   const brandVisualRules = selectedBrand ? getBrandFile(selectedBrand, "visual-rules.md") : "";
-  const projectRules = selectedProject ? getProjectFile(selectedProject, "project.md") : "";
+  const runtimeMarkdown = Object.fromEntries(activeRuntimeFiles.map((file) => [file.path, file.raw]));
+  const activeProjectFile = (fileName: string) => selectedProject
+    ? runtimeMarkdown[`${selectedProject.folder}/${fileName}`] ?? getProjectFile(selectedProject, fileName)
+    : "";
+  const projectRules = activeProjectFile("project.md");
   const projectHeaderPath = selectedProject ? `${selectedProject.folder}/header.md` : "";
   const projectFooterPath = selectedProject ? `${selectedProject.folder}/footer.md` : "";
   const projectLogoPath = selectedProject ? `${selectedProject.folder}/logo.md` : "";
-  const projectHeaderSource = selectedProject ? getProjectFile(selectedProject, "header.md") : "";
-  const projectFooterSource = selectedProject ? getProjectFile(selectedProject, "footer.md") : "";
-  const projectLogoSource = selectedProject ? getProjectFile(selectedProject, "logo.md") : "";
-  const projectVisualRules = selectedProject ? getProjectFile(selectedProject, "visual-rules.md") : "";
+  const projectHeaderSource = activeProjectFile("header.md");
+  const projectFooterSource = activeProjectFile("footer.md");
+  const projectLogoSource = activeProjectFile("logo.md");
+  const projectVisualRules = activeProjectFile("visual-rules.md");
+  const projectDocumentRules = activeProjectFile("document-rules.md");
   const visualRules = [brandVisualRules, projectVisualRules].filter(Boolean).join("\n\n");
   const logoSourceText = getBrandLogoSource(selectedBrand);
   const brandLogoAssets = selectedBrand?.logoAssets ?? [];
@@ -522,7 +666,7 @@ function App() {
         warnings: ["Please select a brand, project and output profile."],
         promptLint: emptyPromptLint(),
         fidelityScore: 0,
-        promptPreview: { visibleText: "", bodyContent: "", guidance: "", headerText: "", footerText: "", brandColours: "", logoAsset: "", backgroundTheme: "" },
+        promptPreview: emptyPromptPreview(),
         sections: {},
         dynamicLayoutPlan: null,
         renderContract: null,
@@ -556,6 +700,7 @@ function App() {
         logoRules,
         typographyRules,
         documentRules,
+        projectDocumentRules,
         tableRules,
         projectRules,
         visualRules,
@@ -576,7 +721,7 @@ function App() {
         warnings: [`Prompt compiler error: ${message}`],
         promptLint: emptyPromptLint(),
         fidelityScore: 0,
-        promptPreview: { visibleText: "", bodyContent: "", guidance: "", headerText: "", footerText: "", brandColours: "", logoAsset: "", backgroundTheme: "" },
+        promptPreview: emptyPromptPreview(),
         sections: {},
         dynamicLayoutPlan: null,
         renderContract: null,
@@ -603,6 +748,7 @@ function App() {
     logoRules,
     typographyRules,
     documentRules,
+    projectDocumentRules,
     tableRules,
     projectRules,
     visualRules,
@@ -622,6 +768,8 @@ function App() {
         : promptView === "actions"
           ? compiled.actionPrompt
           : compiled.contractPrompt;
+
+  const projectScaffoldPreview = useMemo(() => buildProjectScaffold(projectDraft), [projectDraft]);
 
   const documentChunks = compiled.documentPromptParts?.bodyChunks ?? [];
   const selectedDocumentChunk = documentChunks[selectedDocumentChunkIndex] ?? documentChunks[0] ?? null;
@@ -650,6 +798,45 @@ function App() {
     await copyToClipboard(copyableFilename(customOutputFilename || suggestedOutputFilename), "Filename without extension");
   }
 
+  function openProjectWizard() {
+    const draft = newProjectDraft(selectedBrand || brandList[0]);
+    setProjectDraft(draft);
+    setProjectWizardStep(1);
+    setProjectCreateError("");
+    setIsProjectWizardOpen(true);
+  }
+
+  async function handleUpdateStorageRoot(initialize = false) {
+    try {
+      const status = await updateStorageRoot(storageRoot.trim(), initialize);
+      setStorageRoot(status.contentRoot || storageRoot);
+      setStorageState(status.writable ? "available" : "read-only");
+      await refreshRuntimeRepository();
+      showToast(initialize ? "Content root initialized." : "Content root updated.");
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : "Could not update content root.", "warning");
+    }
+  }
+
+  async function handleCreateProject() {
+    setProjectCreateError("");
+    setIsCreatingProject(true);
+    try {
+      const result = await createProject(projectDraft);
+      const key = `${result.project.brandId}/${result.project.id}`;
+      setRuntimeProjects((current) => [result.project, ...current.filter((item) => `${item.brandId}/${item.id}` !== key)]);
+      setRuntimeFilesByProject((current) => ({ ...current, [key]: result.files }));
+      setSelectedBrandId(result.project.brandId);
+      setSelectedProjectId(result.project.id);
+      setIsProjectWizardOpen(false);
+      showToast(`Created ${result.project.label}.`);
+    } catch (error) {
+      setProjectCreateError(error instanceof Error ? error.message : "Could not create project.");
+    } finally {
+      setIsCreatingProject(false);
+    }
+  }
+
   async function handleCopyPromptAndOpenChatGPT() {
     await copyToClipboard(compiled.productionPrompt, "Production prompt");
     window.open("https://chatgpt.com/", "_blank", "noopener,noreferrer");
@@ -657,19 +844,23 @@ function App() {
 
   async function handleSaveContentSource() {
     if (!selectedContentEntry) return;
+    const sourceToSave = selectedContentType === "linkedin"
+      ? editableMarkdown.replace(/^## Body Content\s*$/gim, "## LinkedIn Post Text")
+      : editableMarkdown;
 
     try {
-      const response = await saveContentSourceFile(selectedContentEntry.path, editableMarkdown);
+      const response = await saveContentSourceFile(selectedContentEntry.path, sourceToSave);
 
       if (!response.ok) {
         showToast(response.error || "Could not save content source.", "warning");
         return;
       }
 
-      selectedContentEntry.raw = editableMarkdown;
+      selectedContentEntry.raw = sourceToSave;
+      setEditableMarkdown(sourceToSave);
       setSavedMarkdownByPath((current) => ({
         ...current,
-        [selectedContentEntry.path]: editableMarkdown,
+        [selectedContentEntry.path]: sourceToSave,
       }));
 
       showToast(`Saved ${selectedContentEntry.filename}.`);
@@ -754,6 +945,15 @@ function App() {
     await copyToClipboard(editableMarkdown, label);
   }
 
+  async function handleCopyLinkedInPostText() {
+    const postText = compiled.promptPreview.linkedinPostText ?? "";
+    if (!postText.trim()) {
+      showToast("No LinkedIn Post Text found in this source.", "warning");
+      return;
+    }
+    await copyToClipboard(postText, "LinkedIn Post Text");
+  }
+
   function handleDownloadBodyContentFile() {
     const body = compiled.documentPromptParts?.bodyContent ?? "";
     if (!body.trim()) {
@@ -807,8 +1007,17 @@ function App() {
     []
   );
   const [isExportingGeneratedContent, setIsExportingGeneratedContent] = useState(false);
+  const [isRenderingDocument, setIsRenderingDocument] = useState(false);
+
+  useEffect(() => {
+    if (!generatedContentCategories.some((category) => category.id === selectedGeneratedCategory)) {
+      setSelectedGeneratedCategory(inferredGeneratedCategory);
+    }
+    if (!generatedContentCategories.some((category) => category.id === uploadCategory)) {
+      setUploadCategory(inferredGeneratedCategory);
+    }
+  }, [selectedGeneratedCategory, uploadCategory, inferredGeneratedCategory, setSelectedGeneratedCategory, setUploadCategory]);
   const [targetFolder, setTargetFolder] = useState("");
-  const [uploadFile, setUploadFile] = useState<File | null>(null);
   const [isAssistModalOpen, setIsAssistModalOpen] = useState(false);
   const [assistTargetVersion, setAssistTargetVersion] = useLocalStorageState(
     "promptBuilder.assistTargetVersion",
@@ -826,6 +1035,7 @@ function App() {
     "promptBuilder.workflowMode",
     "run"
   );
+  const [distributionPrefill, setDistributionPrefill] = useState<DistributionPrefill | null>(null);
   const [selectedRecipeId, setSelectedRecipeId] = useLocalStorageState(
     "promptBuilder.selectedRecipeId",
     "investor_deck"
@@ -855,6 +1065,7 @@ function App() {
       const result = await listProjectGeneratedContent({
         projectFolder: selectedProject.folder,
         category: selectedGeneratedCategory,
+        contentSet: selectedGeneratedCategory === "all" ? undefined : selectedContentSet,
       });
       setGeneratedFiles(result.files.map(enrichGeneratedContentFile));
       if (showSuccess) showToast(`Found ${result.files.length} file(s).`, "info");
@@ -870,6 +1081,7 @@ function App() {
       const result = await getProjectGeneratedContentFolder({
         projectFolder: selectedProject.folder,
         category: uploadCategory,
+        contentSet: selectedContentSet,
       });
       setTargetFolder(result.folder);
     } catch {
@@ -879,19 +1091,17 @@ function App() {
 
   useEffect(() => {
     refreshGeneratedFiles();
-  }, [selectedProjectId, selectedGeneratedCategory]);
+  }, [selectedProjectId, selectedGeneratedCategory, selectedContentSet]);
 
   useEffect(() => {
     refreshTargetFolder();
-  }, [selectedProjectId, uploadCategory]);
+  }, [selectedProjectId, uploadCategory, selectedContentSet]);
 
   const versionOptions = useMemo(() => {
     const versions = new Set<string>();
 
     for (const file of generatedFiles) {
-      if (file.category === "visuals" || selectedGeneratedCategory === "all") {
-        versions.add(file.versionLabel || "Unversioned");
-      }
+      versions.add(file.versionLabel || "Unversioned");
     }
 
     return Array.from(versions).sort((a, b) => {
@@ -912,7 +1122,7 @@ function App() {
   }, [versionOptions, selectedGeneratedVersion, setSelectedGeneratedVersion]);
 
   useEffect(() => {
-    if (!assistTargetVersion || (assistTargetVersion !== "Version 1.0" && !versionOptions.includes(assistTargetVersion))) {
+    if (!assistTargetVersion || (assistTargetVersion !== "v001" && !versionOptions.includes(assistTargetVersion))) {
       setAssistTargetVersion(getDefaultAssistVersionLabel({
         selectedGeneratedVersion,
         generatedFiles,
@@ -927,7 +1137,7 @@ function App() {
       const matchesCategory =
         selectedGeneratedCategory === "all" || file.category === selectedGeneratedCategory;
       const matchesVersion =
-        selectedGeneratedCategory !== "visuals" ||
+        selectedGeneratedCategory === "all" ||
         !selectedGeneratedVersion ||
         (file.versionLabel || "Unversioned") === selectedGeneratedVersion;
 
@@ -1034,6 +1244,7 @@ function App() {
           logoRules,
           typographyRules,
           documentRules,
+          projectDocumentRules,
           tableRules,
           projectRules,
           visualRules,
@@ -1080,6 +1291,7 @@ function App() {
     logoRules,
     typographyRules,
     documentRules,
+    projectDocumentRules,
     tableRules,
     projectRules,
     visualRules,
@@ -1106,6 +1318,13 @@ function App() {
     [compiled, customOutputFilename, suggestedOutputFilename, selectedGeneratedFile, isDocumentLike]
   );
 
+  const masterFrameMetadata = {
+    outputProfileId: selectedOutputProfile.id,
+    headerText: compiled.promptPreview.headerText,
+    footerText: compiled.promptPreview.footerText,
+    logoAsset: compiled.promptPreview.logoAsset,
+  };
+
   const styleMemoryPrompt = useMemo(
     () => buildStyleMemoryPrompt({
       files: generatedFiles,
@@ -1117,7 +1336,7 @@ function App() {
   const documentAssemblyPrompt = useMemo(() => {
     if (!selectedBrand || !selectedProject) return "";
     const documentEntries = allProjectContent
-      .filter((entry) => entry.type === "documents")
+      .filter((entry) => entry.type === "documents" && entry.contentSet === selectedContentSet)
       .map((entry) => ({
         label: entry.label,
         filename: entry.filename,
@@ -1130,7 +1349,7 @@ function App() {
       documentTitle: `${selectedProject.label} Document Pack`,
       entries: documentEntries,
     });
-  }, [selectedBrand, selectedProject, allProjectContent, selectedContentPath, editableMarkdown]);
+  }, [selectedBrand, selectedProject, allProjectContent, selectedContentSet, selectedContentPath, editableMarkdown]);
 
   function toggleGeneratedFileSelection(fileId: string) {
     setSelectedGeneratedFileIds((current) =>
@@ -1209,7 +1428,14 @@ function App() {
         projectFolder: selectedProject.folder,
         fileIds: selectedExportFiles.map((file) => file.id),
         format,
-        outputFilename: `${selectedProject.label}-${selectedGeneratedVersion || "generated-visuals"}`,
+        category: "visuals",
+        contentSet: selectedContentSet,
+        versionLabel: selectedGeneratedVersion,
+        outputFilename: getDeliveryPackFilenameBase({
+          brandLabel: selectedBrand?.label,
+          projectLabel: selectedProject.label,
+          versionLabel: selectedGeneratedVersion || "generated-visuals",
+        }),
       });
 
       if (!response.ok || !response.fileUrl) {
@@ -1227,31 +1453,32 @@ function App() {
     }
   }
 
-  async function handleUploadGeneratedFile() {
-    if (!selectedProject || !uploadFile) {
-      showToast("Choose a file and project before uploading.", "warning");
-      return;
-    }
-
+  async function handleRenderLockedDocument() {
+    if (!selectedProject || !isDocumentLike) return;
+    setIsRenderingDocument(true);
     try {
-      const response = await uploadProjectGeneratedContent({
+      const response = await renderProjectDocument({
         projectFolder: selectedProject.folder,
-        category: uploadCategory,
-        file: uploadFile,
-        targetFilename: customOutputFilename || suggestedOutputFilename,
+        outputProfileId: selectedOutputProfile.id as "a4_document_portrait" | "a4_pdf_portrait",
+        outputFilename: customOutputFilename || suggestedOutputFilename,
+        title: selectedContentEntry?.label || selectedProject.label,
+        markdown: compiled.promptPreview.bodyContent || editableMarkdown,
+        headerText: masterFrameMetadata.headerText,
+        footerText: masterFrameMetadata.footerText,
+        logoAsset: masterFrameMetadata.logoAsset,
+        contentSet: selectedContentSet,
       });
-
       if (!response.ok) {
-        showToast(response.error || "Upload failed.", "warning");
+        showToast(response.error || "Document rendering failed.", "warning");
         return;
       }
-
-      setUploadFile(null);
-      setSelectedGeneratedCategory(uploadCategory);
+      setSelectedGeneratedCategory("documents");
       await refreshGeneratedFiles();
-      showToast(`Uploaded as ${response.filename}.`);
+      showToast(`Rendered ${response.filename} with the locked master frame.`);
     } catch (error) {
-      showToast(error instanceof Error ? error.message : "Could not upload file.", "warning");
+      showToast(error instanceof Error ? error.message : "Could not render the document.", "warning");
+    } finally {
+      setIsRenderingDocument(false);
     }
   }
 
@@ -1268,10 +1495,9 @@ function App() {
 
   async function openAssistModal() {
     const defaultVersion = getDefaultAssistVersionLabel({
-      selectedGeneratedVersion,
       generatedFiles,
     });
-    setAssistTargetVersion(normalizeAssistVersionLabel(assistTargetVersion || defaultVersion));
+    setAssistTargetVersion(normalizeAssistVersionLabel(defaultVersion));
     setAssistRunStartedAt(new Date().toISOString());
     setAssistSavedFile(null);
     setAssistError("");
@@ -1308,9 +1534,11 @@ function App() {
 
     const payload = {
       projectFolder: selectedProject.folder,
+      contentSet: selectedContentSet,
       outputFilename: normalizeAssistImageFilename(customOutputFilename || suggestedOutputFilename),
       versionLabel: normalizeAssistVersionLabel(assistTargetVersion),
       runStartedAt: assistRunStartedAt || new Date().toISOString(),
+      masterFrame: masterFrameMetadata,
     };
     const validationErrors = validateAssistImportInput(payload);
 
@@ -1357,9 +1585,11 @@ function App() {
       const response = await uploadProjectGeneratedContent({
         projectFolder: selectedProject.folder,
         category: "visuals",
+        contentSet: selectedContentSet,
         file: assistUploadFile,
         targetFilename: normalizeAssistImageFilename(customOutputFilename || suggestedOutputFilename, uploadExtension),
         versionLabel,
+        masterFrame: masterFrameMetadata,
       });
 
       if (!response.ok) {
@@ -1397,6 +1627,123 @@ function App() {
         ))}
       </div>
 
+      {isProjectWizardOpen && (
+        <div className="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="project-wizard-title">
+          <div className="automation-modal project-wizard-modal">
+            <div className="modal-header">
+              <div>
+                <p className="eyebrow">New project | Step {projectWizardStep} of 3</p>
+                <h2 id="project-wizard-title">Create a branded project workspace</h2>
+                <p>The project will be written to the paired local content root and opened immediately.</p>
+              </div>
+              <button className="quiet-button" type="button" onClick={() => setIsProjectWizardOpen(false)}>Close</button>
+            </div>
+
+            <div className="wizard-progress" aria-label="Project creation progress">
+              {["Workflow", "Project brief", "Review files"].map((label, index) => (
+                <div key={label} className={projectWizardStep >= index + 1 ? "active" : ""}><span>{index + 1}</span><strong>{label}</strong></div>
+              ))}
+            </div>
+
+            <div className="wizard-body">
+              {projectWizardStep === 1 && (
+                <div className="wizard-section">
+                  <div className="wizard-field-grid">
+                    <label className="field"><span>Brand</span>
+                      <select value={projectDraft.brandId} onChange={(event) => {
+                        const brand = brandList.find((item) => item.id === event.target.value);
+                        if (!brand) return;
+                        setProjectDraft((current) => ({
+                          ...current,
+                          brandId: brand.id,
+                          brandName: brand.label,
+                          headerText: current.projectName ? `${brand.label} | ${current.projectName}` : brand.label,
+                          footerText: brand.label,
+                          logoAsset: brand.logoAssets[0]?.path || brand.logoAsset || "",
+                        }));
+                      }}>
+                        {brandList.map((brand) => <option key={brand.id} value={brand.id}>{brand.label}</option>)}
+                      </select>
+                    </label>
+                    <label className="field"><span>Project name</span>
+                      <input value={projectDraft.projectName} onChange={(event) => {
+                        const projectName = event.target.value;
+                        setProjectDraft((current) => ({
+                          ...current,
+                          projectName,
+                          projectSlug: slugifyProjectName(projectName),
+                          headerText: `${current.brandName} | ${projectName}`,
+                        }));
+                      }} placeholder="Standard Bank opportunity" />
+                    </label>
+                    <label className="field"><span>Project slug</span>
+                      <input value={projectDraft.projectSlug} onChange={(event) => setProjectDraft((current) => ({ ...current, projectSlug: slugifyProjectName(event.target.value) }))} placeholder="standard-bank-opportunity" />
+                    </label>
+                  </div>
+                  <div className="workflow-choice-grid">
+                    {projectWorkflowOptions.map((workflow) => (
+                      <button key={workflow.id} className={`workflow-choice ${projectDraft.workflow === workflow.id ? "active" : ""}`} type="button" onClick={() => setProjectDraft((current) => ({ ...current, workflow: workflow.id, enabledOptionalFiles: [] }))}>
+                        <strong>{workflow.label}</strong><span>{workflow.description}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {projectWizardStep === 2 && (
+                <div className="wizard-section wizard-brief-grid">
+                  <label className="field"><span>Audience</span><textarea value={projectDraft.audience} onChange={(event) => setProjectDraft((current) => ({ ...current, audience: event.target.value }))} placeholder="Who will read or view this work?" /></label>
+                  <label className="field"><span>Purpose</span><textarea value={projectDraft.purpose} onChange={(event) => setProjectDraft((current) => ({ ...current, purpose: event.target.value }))} placeholder="What should this project achieve?" /></label>
+                  <label className="field"><span>Tone</span><textarea value={projectDraft.tone} onChange={(event) => setProjectDraft((current) => ({ ...current, tone: event.target.value }))} /></label>
+                </div>
+              )}
+
+              {projectWizardStep === 3 && (
+                <div className="wizard-section wizard-review-grid">
+                  <div className="wizard-chrome-fields">
+                    <label className="field"><span>Header text</span><input value={projectDraft.headerText} onChange={(event) => setProjectDraft((current) => ({ ...current, headerText: event.target.value }))} /></label>
+                    <label className="field"><span>Footer text</span><input value={projectDraft.footerText} onChange={(event) => setProjectDraft((current) => ({ ...current, footerText: event.target.value }))} /></label>
+                    <label className="field"><span>Logo asset</span>
+                      <select value={projectDraft.logoAsset} onChange={(event) => setProjectDraft((current) => ({ ...current, logoAsset: event.target.value }))}>
+                        {(brandList.find((brand) => brand.id === projectDraft.brandId)?.logoAssets || []).map((asset) => <option key={asset.path} value={asset.path}>{asset.filename}</option>)}
+                      </select>
+                    </label>
+                    <div className="target-folder"><span>Target folder</span><code>{projectScaffoldPreview.targetFolder}</code></div>
+                  </div>
+                  <div className="scaffold-tree">
+                    <h3>Files to create</h3>
+                    {projectScaffoldPreview.requiredFiles.map((file) => <div className="scaffold-file required" key={file.path}><span aria-hidden="true">✓</span><code>{file.path}</code><small>Required</small></div>)}
+                    {projectScaffoldPreview.optionalFiles.map((file) => (
+                      <label className="scaffold-file" key={file.path}>
+                        <input type="checkbox" checked={projectDraft.enabledOptionalFiles.includes(file.path)} onChange={() => setProjectDraft((current) => ({
+                          ...current,
+                          enabledOptionalFiles: current.enabledOptionalFiles.includes(file.path)
+                            ? current.enabledOptionalFiles.filter((path) => path !== file.path)
+                            : [...current.enabledOptionalFiles, file.path],
+                        }))} />
+                        <code>{file.path}</code><small>Optional</small>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {projectCreateError && <div className="automation-error">{projectCreateError}</div>}
+              {projectScaffoldPreview.errors.length > 0 && projectWizardStep === 3 && <div className="automation-error">{projectScaffoldPreview.errors.join(" ")}</div>}
+            </div>
+
+            <div className="modal-actions">
+              {projectWizardStep > 1 && <button className="secondary-button" type="button" onClick={() => setProjectWizardStep((step) => step - 1)}>Back</button>}
+              {projectWizardStep < 3 ? (
+                <button className="primary-button" type="button" disabled={(projectWizardStep === 1 && (!projectDraft.projectName || !projectDraft.projectSlug)) || (projectWizardStep === 2 && (!projectDraft.audience || !projectDraft.purpose || !projectDraft.tone))} onClick={() => setProjectWizardStep((step) => step + 1)}>Continue</button>
+              ) : (
+                <button className="primary-button" type="button" disabled={isCreatingProject || projectScaffoldPreview.errors.length > 0 || storageState !== "available"} onClick={handleCreateProject}>{isCreatingProject ? "Creating..." : "Create project"}</button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
       {isAssistModalOpen && (
         <div className="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="assist-modal-title">
           <div className="automation-modal">
@@ -1404,7 +1751,7 @@ function App() {
               <div>
                 <p className="eyebrow">Normal Chrome assisted mode</p>
                 <h2 id="assist-modal-title">Run ChatGPT Assistant</h2>
-                <p>Use your logged-in ChatGPT tab. This assistant prepares the prompt and filename, then imports the downloaded image into the right generated-content version folder.</p>
+                <p>Use your logged-in ChatGPT tab. This assistant prepares the prompt and filename, then imports the downloaded image into the selected content set's version folder.</p>
               </div>
               <button className="quiet-button" type="button" onClick={() => setIsAssistModalOpen(false)}>Close</button>
             </div>
@@ -1425,7 +1772,7 @@ function App() {
               <label className="field">
                 <span>Target version folder</span>
                 <select value={assistTargetVersion} onChange={(event) => setAssistTargetVersion(normalizeAssistVersionLabel(event.target.value))}>
-                  {Array.from(new Set([assistTargetVersion || "Version 1.0", "Version 1.0", ...versionOptions.filter((version) => version !== "Unversioned")])).map((version) => (
+                  {Array.from(new Set([assistTargetVersion || "v001", "v001", ...versionOptions.filter((version) => version !== "Unversioned")])).map((version) => (
                     <option key={version} value={version}>{version}</option>
                   ))}
                 </select>
@@ -1437,7 +1784,7 @@ function App() {
                 <img src={logoPreviewPath} alt="Resolved automation logo" />
               </div>
               <div>
-                <span>Resolved logo asset</span>
+                <span>App-rendered master-frame logo</span>
                 <code>{compiled.promptPreview.logoAsset || selectedProjectLogoAsset || selectedBrand?.logoAsset || "No logo asset"}</code>
               </div>
             </div>
@@ -1448,6 +1795,7 @@ function App() {
                 outputFilename: customOutputFilename || suggestedOutputFilename,
                 versionLabel: assistTargetVersion,
                 runStartedAt: assistRunStartedAt,
+                masterFrame: masterFrameMetadata,
               }).length === 0 ? (
                 <p className="status-ok">Ready. Downloaded images after {assistRunStartedAt ? new Date(assistRunStartedAt).toLocaleTimeString() : "this run starts"} can be imported from Downloads.</p>
               ) : (
@@ -1457,6 +1805,7 @@ function App() {
                     outputFilename: customOutputFilename || suggestedOutputFilename,
                     versionLabel: assistTargetVersion,
                     runStartedAt: assistRunStartedAt,
+                    masterFrame: masterFrameMetadata,
                   }).map((error) => <li key={error}>{error}</li>)}
                 </ul>
               )}
@@ -1476,12 +1825,12 @@ function App() {
               <div className={`automation-step step-${assistChatGptOpened ? "complete" : "queued"}`}>
                 <span>{assistChatGptOpened ? "complete" : "queued"}</span>
                 <strong>Open ChatGPT</strong>
-                <p>Attach the logo shown above, generate the image, then download it.</p>
+                <p>Generate and download body artwork only. Do not attach the logo; the app adds it in the locked frame.</p>
               </div>
               <div className={`automation-step step-${assistSavedFile?.ok ? "complete" : isImportingAssistDownload ? "running" : "queued"}`}>
                 <span>{assistSavedFile?.ok ? "complete" : isImportingAssistDownload ? "running" : "queued"}</span>
                 <strong>Import downloaded image</strong>
-                <p>The app renames and saves the newest PNG, JPEG or WebP downloaded after this popup opened.</p>
+                <p>The app fits the newest downloaded artwork into the fixed body area, then renders the header, footer and real logo.</p>
               </div>
             </div>
 
@@ -1503,7 +1852,7 @@ function App() {
               <button className="secondary-button" type="button" onClick={handleAssistCopyFilename}>Copy filename</button>
               <a className="secondary-button" href={logoPreviewPath} target="_blank" rel="noreferrer">Open logo file</a>
               <button className="secondary-button" type="button" onClick={handleOpenChatGptAssist}>Open ChatGPT</button>
-              <button className="primary-button" type="button" onClick={handleImportLatestChatGptDownload} disabled={isImportingAssistDownload}>
+              <button className="primary-button" type="button" onClick={handleImportLatestChatGptDownload} disabled={!localWritesAvailable || isImportingAssistDownload}>
                 {isImportingAssistDownload ? "Importing..." : "Import latest download"}
               </button>
               <button className="secondary-button" type="button" onClick={() => refreshGeneratedFiles(true)}>Refresh generated content</button>
@@ -1518,7 +1867,7 @@ function App() {
                   onChange={(event) => setAssistUploadFile(event.target.files?.[0] || null)}
                 />
               </label>
-              <button className="secondary-button" type="button" onClick={handleAssistManualUpload} disabled={!assistUploadFile}>
+              <button className="secondary-button" type="button" onClick={handleAssistManualUpload} disabled={!localWritesAvailable || !assistUploadFile}>
                 Save to generated folder
               </button>
             </div>
@@ -1535,13 +1884,19 @@ function App() {
             keeping brand chrome, exact text and project consistency locked.
           </p>
         </div>
-        <div className="hero-metrics">
+        {(workflowMode === "create" || workflowMode === "run") && <div className="hero-metrics">
           <div><span>{compiled.promptStats.words}</span><small>prompt words</small></div>
           <div><span>{compiled.promptStats.visibleTextLines}</span><small>visible lines</small></div>
           <div><span>{compiled.fidelityScore}</span><small>fidelity score</small></div>
           <div><span>{filteredGeneratedFiles.length}</span><small>filtered files</small></div>
-        </div>
+        </div>}
       </header>
+
+      <section className="master-context" aria-label="Master brand and project filter">
+        <label className="field"><span>Brand</span><select value={selectedBrandId} onChange={(event) => setSelectedBrandId(event.target.value)}>{brandList.map((brand) => <option key={brand.id} value={brand.id}>{brand.label}</option>)}</select></label>
+        <label className="field"><span>Project</span><select value={selectedProjectId} onChange={(event) => setSelectedProjectId(event.target.value)}>{filteredProjects.map((project) => <option key={project.id} value={project.id}>{project.label}</option>)}</select></label>
+        <button className="icon-button add-project-button" type="button" title="Create a new project" aria-label="Create a new project" onClick={openProjectWizard}>+</button>
+      </section>
 
       <nav className="workflow-nav" aria-label="Workflow modes">
         {workflowModes.map((mode) => (
@@ -1609,7 +1964,7 @@ function App() {
 
             <div className="workflow-card">
               <span>Run target</span>
-              <strong>{normalizeAssistVersionLabel(assistTargetVersion || selectedGeneratedVersion || "Version 1.0")}</strong>
+              <strong>{normalizeAssistVersionLabel(assistTargetVersion || selectedGeneratedVersion || "v001")}</strong>
               <p>{normalizeAssistImageFilename(customOutputFilename || suggestedOutputFilename)}</p>
               <button className="secondary-button" type="button" onClick={handleCopyOutputFilename}>Copy filename</button>
             </div>
@@ -1683,10 +2038,10 @@ function App() {
             <div className="workflow-card primary-workflow-card">
               <span>Delivery pack</span>
               <strong>{selectedExportFiles.length} export-ready visual(s)</strong>
-              <p>Export the selected PNG/JPEG visuals from the current version as PPTX or PDF.</p>
+              <p>Export the selected PNG/JPEG visuals as a branded PPTX or PDF named from brand, project and version.</p>
               <div className="button-row">
-                <button className="primary-button" type="button" onClick={() => handleExportGeneratedContent("pptx")} disabled={selectedExportFiles.length === 0 || isExportingGeneratedContent}>Export PPTX</button>
-                <button className="secondary-button" type="button" onClick={() => handleExportGeneratedContent("pdf")} disabled={selectedExportFiles.length === 0 || isExportingGeneratedContent}>Export PDF</button>
+                <button className="primary-button" type="button" onClick={() => handleExportGeneratedContent("pptx")} disabled={!localWritesAvailable || selectedExportFiles.length === 0 || isExportingGeneratedContent}>Export PPTX</button>
+                <button className="secondary-button" type="button" onClick={() => handleExportGeneratedContent("pdf")} disabled={!localWritesAvailable || selectedExportFiles.length === 0 || isExportingGeneratedContent}>Export PDF</button>
               </div>
             </div>
 
@@ -1699,42 +2054,48 @@ function App() {
               </div>
             </div>
 
-            <div className="workflow-card wide-card">
-              <span>Upload target</span>
+            <div className="workflow-card wide-card storage-workflow-card">
+              <span>Storage target</span>
               <strong>{targetFolder || "No upload folder resolved"}</strong>
-              <p>{selectedProject?.folder}/generated-content/{uploadCategory}/</p>
+              <p>Local writes go to the machine running this app. Point the content root at OneDrive or another hard drive folder. A hosted deployment remains read-only because a browser cannot write directly to your personal disk.</p>
             </div>
           </div>
         )}
+
+        {workflowMode === "distribution" && (
+          <DistributionPanel
+            project={selectedProject}
+            writable={localWritesAvailable}
+            prefill={distributionPrefill}
+            onPrefillConsumed={() => setDistributionPrefill(null)}
+            onNotice={showToast}
+          />
+        )}
       </section>
 
-      <main className="workspace-grid">
+      {workflowMode !== "distribution" && (
+      <main className={`workspace-grid workspace-grid-${workflowMode}`}>
+        {(workflowMode === "create" || workflowMode === "run") && (
         <aside className="panel sidebar-panel">
           <div className="panel-title">
-            <h2>Selection</h2>
-            <p>Brand, project, source and output controls.</p>
+            <h2>{workflowMode === "create" ? "Create controls" : "Run controls"}</h2>
+            <p>Source and output controls for {workflowMode}.</p>
           </div>
 
           <div className="form-stack">
-            <label className="field"><span>Brand</span>
-              <select value={selectedBrandId} onChange={(e) => setSelectedBrandId(e.target.value)}>
-                {brandList.map((brand) => <option key={brand.id} value={brand.id}>{brand.label}</option>)}
-              </select>
-            </label>
-
-            <label className="field"><span>Project</span>
-              <select value={selectedProjectId} onChange={(e) => setSelectedProjectId(e.target.value)}>
-                {filteredProjects.map((project) => <option key={project.id} value={project.id}>{project.label}</option>)}
-              </select>
-            </label>
-
-            <label className="field"><span>Content Type</span>
+            <label className="field"><span>Output Type</span>
               <select value={selectedContentType} onChange={(e) => setSelectedContentType(e.target.value)}>
                 {contentTypes.map((type) => <option key={type} value={type}>{contentTypeLabel(type)}</option>)}
               </select>
             </label>
 
-            <label className="field"><span>Content File</span>
+            <label className="field"><span>Content Set</span>
+              <select value={selectedContentSet} onChange={(e) => setSelectedContentSet(e.target.value)}>
+                {contentSets.map((contentSet) => <option key={contentSet} value={contentSet}>{contentTypeLabel(contentSet)}</option>)}
+              </select>
+            </label>
+
+            <label className="field"><span>Source File</span>
               <select value={selectedContentPath} onChange={(e) => setSelectedContentPath(e.target.value)}>
                 {visibleContentFiles.map((entry) => <option key={entry.path} value={entry.path}>{entry.label}</option>)}
               </select>
@@ -1746,7 +2107,7 @@ function App() {
               </select>
             </label>
 
-            <label className="field"><span>Layout Style</span>
+            {workflowMode === "create" && <><label className="field"><span>Layout Style</span>
               <select value={selectedLayoutPresetId} onChange={(e) => setSelectedLayoutPresetId(e.target.value)}>
                 {layoutPresets.map((preset) => <option key={preset.id} value={preset.id}>{preset.label}</option>)}
               </select>
@@ -1767,13 +2128,29 @@ function App() {
             )}
 
             {isDocumentLike && (
-              <label className="field"><span>Advanced page preset</span>
+              <label className="field"><span>Page treatment</span>
                 <select value={selectedDocumentBackgroundPresetId} onChange={(e) => setSelectedDocumentBackgroundPresetId(e.target.value)}>
                   {documentBackgroundPresets.map((preset) => <option key={preset.id} value={preset.id}>{preset.label}</option>)}
                 </select>
+                <p className="field-note">Auto uses the selected brand/project document, logo, header, footer and table rules. Use the other options only to force a neutral page format.</p>
               </label>
             )}
+            </>}
           </div>
+
+          {workflowMode === "create" && <>
+          <details className="storage-settings" open={storageState !== "available"}>
+            <summary><span>Local storage</span><strong className={`connection-${storageState}`}>{storageState}</strong></summary>
+            <div className="storage-settings-body">
+              {storageState === "read-only" && <p className="storage-notice">Local write tools are unavailable in this hosted build. Run <code>npm run dev</code> on your computer to create projects, save files, upload assets and export documents.</p>}
+              <label className="field"><span>Content root</span><input value={storageRoot} onChange={(event) => setStorageRoot(event.target.value)} disabled={storageState !== "available"} placeholder="C:\\Users\\name\\OneDrive\\Prompt Builder\\content" /></label>
+              <div className="button-row">
+                <button className="secondary-button compact-button" type="button" disabled={storageState !== "available"} onClick={() => handleUpdateStorageRoot(false)}>Use root</button>
+                <button className="quiet-button compact-button" type="button" disabled={storageState !== "available"} onClick={() => handleUpdateStorageRoot(true)}>Initialize root</button>
+              </div>
+              <p className="field-note">The main app writes to this folder. Initialization copies missing brand seed files without overwriting existing content.</p>
+            </div>
+          </details>
 
           <div className="logo-preview-card">
             <div className="small-label">Resolved logo</div>
@@ -1788,9 +2165,9 @@ function App() {
             {compiled.dynamicLayoutPlan ? (
               <>
                 <p className="status-ok">{compiled.dynamicLayoutPlan.contentKind} | {compiled.dynamicLayoutPlan.density?.level ?? "unknown"}</p>
-                <p>Layout: <strong>{compiled.dynamicLayoutPlan.layoutPresetId}</strong></p>
+                <p>{isDocumentLike ? "Structure" : "Layout"}: <strong>{compiled.dynamicLayoutPlan.layoutPresetId}</strong></p>
                 <p>Theme: <strong>{compiled.promptPreview.backgroundTheme}</strong></p>
-                <p>Background: <strong>{compiled.dynamicLayoutPlan.backgroundPresetId}</strong></p>
+                <p>{isDocumentLike ? "Page treatment" : "Background"}: <strong>{compiled.dynamicLayoutPlan.backgroundPresetId}</strong></p>
                 <p>Fidelity: <strong>{compiled.fidelityScore}/100</strong></p>
               </>
             ) : <p>No analysis available.</p>}
@@ -1801,8 +2178,11 @@ function App() {
               <ul>{compiled.warnings.map((warning) => <li key={warning}>{warning}</li>)}</ul>
             )}
           </div>
+          </>}
         </aside>
+        )}
 
+        {workflowMode === "create" && (
         <section className="panel editor-panel">
           <div className="project-chrome-editor">
             <div className="panel-title panel-title-row compact-panel-title">
@@ -1817,7 +2197,7 @@ function App() {
                   <span>Header markdown</span>
                   <div className="mini-actions">
                     <button className="quiet-button" type="button" onClick={() => setEditableProjectHeader(projectHeaderSource)}>Reset</button>
-                    <button className="secondary-button compact-button" type="button" onClick={() => handleSaveProjectChrome("header")}>Save</button>
+                    <button className="secondary-button compact-button" type="button" disabled={!localWritesAvailable} onClick={() => handleSaveProjectChrome("header")}>Save</button>
                   </div>
                 </div>
                 <textarea value={editableProjectHeader} onChange={(event) => setEditableProjectHeader(event.target.value)} spellCheck={false} />
@@ -1828,7 +2208,7 @@ function App() {
                   <span>Footer markdown</span>
                   <div className="mini-actions">
                     <button className="quiet-button" type="button" onClick={() => setEditableProjectFooter(projectFooterSource)}>Reset</button>
-                    <button className="secondary-button compact-button" type="button" onClick={() => handleSaveProjectChrome("footer")}>Save</button>
+                    <button className="secondary-button compact-button" type="button" disabled={!localWritesAvailable} onClick={() => handleSaveProjectChrome("footer")}>Save</button>
                   </div>
                 </div>
                 <textarea value={editableProjectFooter} onChange={(event) => setEditableProjectFooter(event.target.value)} spellCheck={false} />
@@ -1843,7 +2223,7 @@ function App() {
                       setSelectedProjectLogoAsset(firstLogoAssetPath(source) || brandLogoAssets[0]?.path || "");
                       setEditableProjectLogoNotes(logoNotesFromMarkdown(source));
                     }}>Reset</button>
-                    <button className="secondary-button compact-button" type="button" onClick={() => handleSaveProjectChrome("logo")}>Save</button>
+                    <button className="secondary-button compact-button" type="button" disabled={!localWritesAvailable} onClick={() => handleSaveProjectChrome("logo")}>Save</button>
                   </div>
                 </div>
                 <select value={selectedProjectLogoAsset} onChange={(event) => setSelectedProjectLogoAsset(event.target.value)}>
@@ -1879,18 +2259,20 @@ function App() {
               {isContentDirty && <span className="dirty-pill">Unsaved</span>}
               <button className="secondary-button" type="button" onClick={handleApplyDynamicTags}>Update dynamic tags</button>
               <button className="secondary-button" type="button" onClick={() => setEditableMarkdown(selectedContentEntry?.raw ?? "")}>Reset</button>
-              <button className="primary-button" type="button" onClick={handleSaveContentSource}>Save source</button>
+              <button className="primary-button" type="button" disabled={!localWritesAvailable} onClick={handleSaveContentSource}>Save source</button>
             </div>
           </div>
 
           <textarea className="content-editor" value={editableMarkdown} onChange={(e) => setEditableMarkdown(e.target.value)} spellCheck={false} />
         </section>
+        )}
 
+        {(workflowMode === "create" || workflowMode === "run") && (
         <section className="panel prompt-panel">
           <div className="panel-title panel-title-row">
             <div>
-              <h2>Compiled Prompt</h2>
-              <p>Copy one run-ready, output-specific prompt. Production prompts stay lean: visual prompts use Visible Text once only, while document prompts use Body Content and the source MD.</p>
+              <h2>{workflowMode === "create" ? "Prompt Preview" : "Run Prompt"}</h2>
+              <p>{isDocumentLike ? "Render the production Word/PDF in the app for locked headers, footers and logo placement. Copy prompt remains available for direct ChatGPT fallback." : "Generate body artwork only; the app applies the locked master frame after download. Copy prompt remains available for direct ChatGPT use."}</p>
             </div>
             <div className="segmented-toggle">
               <button type="button" className={promptView === "production" ? "active" : ""} onClick={() => setPromptView("production")}>{outputPromptModeLabel(selectedOutputProfile?.outputType)}</button>
@@ -1908,16 +2290,17 @@ function App() {
               </label>
               <p className="field-note">Copy uses basename only: {basenameWithoutExtension(customOutputFilename || suggestedOutputFilename)}</p>
             </div>
-            <div className="button-row compact-actions">
-              <button className="secondary-button" type="button" onClick={handleCopyOutputFilename}>Copy filename</button>
-            </div>
           </div>
 
           <div className="action-strip streamlined-actions">
             <button className="primary-button" type="button" onClick={() => copyToClipboard(compiled.productionPrompt, "Prompt")}>Copy prompt</button>
-            <button className="secondary-button" type="button" onClick={handleCopyPromptAndOpenChatGPT}>Copy prompt + open ChatGPT</button>
-            {isImageOutput && (
-              <button className="primary-button" type="button" onClick={openAssistModal}>Run ChatGPT Assistant</button>
+            {workflowMode === "run" && isDocumentLike && (
+              <button className="secondary-button" type="button" disabled={!localWritesAvailable || isRenderingDocument} onClick={handleRenderLockedDocument}>
+                {isRenderingDocument ? "Rendering…" : `Render locked ${selectedOutputProfile.outputType === "pdf" ? "PDF" : "Word document"}`}
+              </button>
+            )}
+            {selectedContentType === "linkedin" && compiled.promptPreview.linkedinPostText?.trim() && (
+              <button className="secondary-button" type="button" onClick={handleCopyLinkedInPostText}>Copy LinkedIn Post Text</button>
             )}
           </div>
 
@@ -1943,6 +2326,14 @@ function App() {
 
           <div className="source-truth-preview">
             <div>
+              <span>Detected sections</span>
+              <pre>{compiled.promptPreview.detectedSections?.length ? compiled.promptPreview.detectedSections.join("\n") : "None"}</pre>
+            </div>
+            <div>
+              <span>Ignored legacy sections</span>
+              <pre>{compiled.promptPreview.ignoredLegacySections?.length ? compiled.promptPreview.ignoredLegacySections.join("\n") : "None"}</pre>
+            </div>
+            <div>
               <span>Resolved header</span>
               <pre>{compiled.promptPreview.headerText || "None"}</pre>
             </div>
@@ -1962,6 +2353,24 @@ function App() {
               <span>Visible output text</span>
               <pre>{compiled.promptPreview.visibleText || "None"}</pre>
             </div>
+            {selectedContentType === "linkedin" && (
+              <div>
+                <span>LinkedIn Post Text</span>
+                <pre>{compiled.promptPreview.linkedinPostText || "None"}</pre>
+              </div>
+            )}
+            {isDocumentLike && (
+              <div>
+                <span>Cover page source</span>
+                <pre>{compiled.promptPreview.coverPageContent || "None"}</pre>
+              </div>
+            )}
+            {isDocumentLike && (
+              <div>
+                <span>Table of contents</span>
+                <pre>{compiled.promptPreview.tableOfContentsContent || "None"}</pre>
+              </div>
+            )}
             <div>
               <span>{isDocumentLike ? "Document body source" : "Guidance only"}</span>
               <pre>{(isDocumentLike ? compiled.promptPreview.bodyContent : compiled.promptPreview.guidance) || "None"}</pre>
@@ -1970,42 +2379,16 @@ function App() {
 
           <textarea className="prompt-output" value={shownPrompt} readOnly spellCheck={false} />
         </section>
+        )}
 
+        {(workflowMode === "review" || workflowMode === "export") && (
         <section className="panel generated-panel">
           <div className="panel-title panel-title-row">
             <div>
-              <h2>Project Generated Content</h2>
-              <p>Upload files with the suggested filename, no manual rename dance required.</p>
+              <h2>{workflowMode === "review" ? "Generated Content Review" : "Export Selection"}</h2>
+              <p>{workflowMode === "review" ? "Inspect and approve generated files for this project." : "Select generated files for the delivery pack."}</p>
             </div>
             <button className="primary-button" type="button" onClick={() => refreshGeneratedFiles(true)}>Refresh files</button>
-          </div>
-
-          <div className="generated-folder-banner">
-            <div>
-              <span>Upload target folder</span>
-              <strong>{targetFolder || "Select a generated content type"}</strong>
-            </div>
-            <p><code>{selectedProject?.folder}/generated-content/{uploadCategory}/</code></p>
-          </div>
-
-          <div className="upload-bar">
-            <label className="field"><span>Upload type</span>
-              <select value={uploadCategory} onChange={(e) => setUploadCategory(e.target.value as Exclude<GeneratedContentCategory, "all">)}>
-                {generatedContentCategories.filter((category) => category.id !== "all").map((category) => (
-                  <option key={category.id} value={category.id}>{category.label}</option>
-                ))}
-              </select>
-            </label>
-
-            <label className="field"><span>Save uploaded file as</span>
-              <input value={customOutputFilename} onChange={(e) => setCustomOutputFilename(e.target.value)} />
-            </label>
-
-            <label className="field file-field"><span>Choose generated file</span>
-              <input type="file" onChange={(e) => setUploadFile(e.target.files?.[0] ?? null)} />
-            </label>
-
-            <button className="primary-button upload-button" type="button" onClick={handleUploadGeneratedFile}>Upload + rename</button>
           </div>
 
           <div className="generated-layout">
@@ -2035,23 +2418,6 @@ function App() {
                 </div>
               )}
 
-              <div className="export-control-card">
-                <div>
-                  <strong>{selectedExportFiles.length} selected</strong>
-                  <p>Best results: upload 3840x2160 PNGs for 16:9 decks. The exporter embeds originals and does not intentionally downscale.</p>
-                </div>
-                <div className="export-actions">
-                  <button className="secondary-button" type="button" onClick={selectAllGeneratedImagesInVersion} disabled={exportableGeneratedImages.length === 0}>Select all</button>
-                  <button className="secondary-button" type="button" onClick={clearGeneratedImageSelection} disabled={selectedExportFiles.length === 0}>Clear</button>
-                  <button className="primary-button" type="button" onClick={() => handleExportGeneratedContent("pptx")} disabled={selectedExportFiles.length === 0 || isExportingGeneratedContent}>
-                    {isExportingGeneratedContent ? "Exporting..." : "Export PPTX"}
-                  </button>
-                  <button className="primary-button" type="button" onClick={() => handleExportGeneratedContent("pdf")} disabled={selectedExportFiles.length === 0 || isExportingGeneratedContent}>
-                    {isExportingGeneratedContent ? "Exporting..." : "Export PDF"}
-                  </button>
-                </div>
-              </div>
-
               {filteredGeneratedFiles.length === 0 ? (
                 <div className="empty-state">
                   <h3>No files match the selected filters.</h3>
@@ -2060,8 +2426,8 @@ function App() {
               ) : (
                 <div className="generated-file-list">
                   {filteredGeneratedFiles.map((file) => (
-                    <div key={file.id} className={selectedGeneratedFile?.id === file.id ? "generated-file-card active" : "generated-file-card"}>
-                      <label className="generated-select">
+                    <div key={file.id} className={`generated-file-card ${workflowMode}-generated-file-card${selectedGeneratedFile?.id === file.id ? " active" : ""}`}>
+                      {workflowMode === "export" && <label className="generated-select">
                         <input
                           type="checkbox"
                           checked={selectedGeneratedFileIds.includes(file.id)}
@@ -2069,22 +2435,29 @@ function App() {
                           onChange={() => toggleGeneratedFileSelection(file.id)}
                         />
                         <span>Select</span>
-                      </label>
+                      </label>}
                       <button type="button" className="generated-file-main" onClick={() => setSelectedGeneratedFileId(file.id)}>
                         <strong>{file.displayName || basenameWithoutExtension(file.filename)}</strong>
                         <span>{file.versionLabel || "Unversioned"}</span>
                         <small>{categoryLabel(file.category)} | {file.fileType} | {formatFileSize(file.sizeBytes)}</small>
                         <code>{file.generatedRelativePath}</code>
                       </button>
-                      {workflowMode === "review" && (
-                        <button
-                          type="button"
-                          className={approvedGeneratedFileIds.includes(file.id) ? "primary-button compact-button generated-approve" : "secondary-button compact-button generated-approve"}
-                          onClick={() => toggleApprovedGeneratedFile(file.id)}
-                        >
-                          {approvedGeneratedFileIds.includes(file.id) ? "Approved" : "Approve"}
-                        </button>
-                      )}
+                      {workflowMode !== "export" && <button
+                        type="button"
+                        className="secondary-button compact-button generated-distribute-button"
+                        onClick={() => {
+                          if (!selectedProject) return;
+                          setDistributionPrefill({
+                            projectFolder: selectedProject.folder,
+                            contentLabel: file.displayName || basenameWithoutExtension(file.filename),
+                            generatedContentIds: [file.id],
+                          });
+                          setWorkflowMode("distribution");
+                          window.scrollTo({ top: 0, behavior: "smooth" });
+                        }}
+                      >
+                        Plan/send
+                      </button>}
                     </div>
                   ))}
                 </div>
@@ -2112,7 +2485,9 @@ function App() {
             </div>
           </div>
         </section>
+        )}
       </main>
+      )}
     </div>
   );
 }

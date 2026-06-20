@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { compilePrompt, contentItems, listBrands, listProjects } from "../src/lib/prompt-builder";
+import { readFileSync } from "node:fs";
+import { compilePrompt, contentItems, layoutPresets, listBrands, listProjects, outputProfiles } from "../src/lib/prompt-builder";
 import { resolvePromptLogoAsset } from "../src/lib/prompt-builder/logo-resolution";
 
 function words(input: string): number {
@@ -42,13 +43,22 @@ describe("compilePrompt", () => {
       outputProfileId: "landscape_image_16_9",
     });
 
-    expect(result.warnings).toEqual([]);
+    expect(result.warnings).toEqual([
+      "Visible Text has many plain lines. Use simple fields like Title:, Body: and Status: to improve dynamic layout interpretation.",
+      "One or more visible text lines are long. Use wider text zones, cards, or compact typography.",
+    ]);
     expect(result.prompt).toBe(result.productionPrompt);
     expect(result.productionPrompt).toContain("TASK");
     expect(result.productionPrompt).toContain("SOURCE OF TRUTH");
-    expect(result.productionPrompt).toContain("BRAND CAPSULE");
-    expect(result.productionPrompt).toContain("OUTPUT DIRECTION");
+    expect(result.productionPrompt).toContain("BRAND + PROJECT");
+    expect(result.productionPrompt).toContain("DECK FRAME");
+    expect(result.productionPrompt).toContain("TYPOGRAPHY");
+    expect(result.productionPrompt).toContain("CONTENT");
+    expect(result.productionPrompt).toContain("IMAGE DIRECTION");
+    expect(result.productionPrompt).toContain("GUARDRAILS");
     expect(result.productionPrompt).toContain("BEGIN EXACT VISIBLE TEXT");
+    expect(result.productionPrompt).not.toContain("BATCH-ONLY VISUAL QUALITY LOCK");
+    expect(result.productionPrompt).not.toContain("Text layout lock:");
     expect(result.debugPrompt).toContain("DEBUG PROMPT VIEW");
     expect(result.debugPrompt).toContain("Raw Content Markdown:");
     expect(result.debugPrompt).toContain("Full Source Rules:");
@@ -56,7 +66,7 @@ describe("compilePrompt", () => {
     expect(result.debugPrompt.length).toBeGreaterThan(result.productionPrompt.length);
   });
 
-  it("compiles a SupplySync360 slide with a lean brand capsule and one logo rule", () => {
+  it("compiles a SupplySync360 slide with modular brand, deck and preset sections", () => {
     const result = compilePrompt({
       brandId: "supplysync360",
       projectId: "executive-overview",
@@ -64,33 +74,165 @@ describe("compilePrompt", () => {
       outputProfileId: "landscape_image_16_9",
     });
 
-    expect(result.productionPrompt).toContain("BRAND CAPSULE");
+    expect(result.productionPrompt).toContain("BRAND + PROJECT");
     expect(result.productionPrompt).toContain("SupplySync360");
-    expect(result.productionPrompt).toContain("Create one 16:9 landscape image slide");
+    expect(result.productionPrompt).toContain("Create one 16:9 landscape image visual");
     expect(result.productionPrompt).toContain("Header: SupplySync360 | Executive Overview");
     expect(result.productionPrompt).toContain("Footer: SupplySync360 | From visibility to coordinated action.");
     expect(result.productionPrompt).toContain("Brand colours:");
     expect(result.productionPrompt).toContain("#008B8B");
     expect(result.productionPrompt).toContain("#006C70");
     expect(result.productionPrompt).toContain("#FFD700");
-    expect(result.productionPrompt).toContain("Theme/style:");
-    expect(result.productionPrompt).toContain("Fonts/sizes:");
-    expect(result.productionPrompt).toContain("slide title 24-34pt");
-    expect(result.productionPrompt).toContain("Deck structure lock: 16:9 landscape");
-    expect(result.productionPrompt).toContain("Fixed header zone: 8-10% of slide height");
-    expect(result.productionPrompt).toContain("Fixed footer zone: 6-8% of slide height");
-    expect(result.productionPrompt).toContain("header text on the same horizontal line as the logo");
-    expect(result.productionPrompt).toContain("Only the body area may vary");
-    expect(result.productionPrompt).toContain("Logo: use official PNG asset content/brands/supplysync360/assets/supplysync360-logo.png");
-    expect(result.productionPrompt).toContain("header on every slide");
-    expect(result.productionPrompt).toContain("do not redraw, recolour, stretch, replace, crop or invent a logo.");
+    expect(result.productionPrompt).toContain("Brand design: Use premium executive operational-technology styling.");
+    expect(result.productionPrompt).toContain("Font style:");
+    expect(result.productionPrompt).toContain("Title: 28-36 pt");
+    expect(result.productionPrompt).toContain("Generation mode: direct_chatgpt");
+    expect(result.productionPrompt).toContain("Layout preset: hero_scene_overlay");
+    expect(result.productionPrompt).toContain("Background preset: balanced_in_between_depth");
+    expect(result.productionPrompt).toContain("Logo: content/brands/supplysync360/assets/supplysync360-logo-white.png");
+    expect(result.productionPrompt).toContain("preserve aspect ratio");
     expect(result.productionPrompt).toContain("Stop managing silos. Start coordinating action.");
     expect(result.productionPrompt).toContain("16:9 landscape image");
     expect(result.productionPrompt).not.toContain("Header rules:");
     expect(result.productionPrompt).not.toContain("Footer rules:");
+    expect(result.productionPrompt).not.toContain("Deck structure lock:");
+    expect(result.productionPrompt).not.toContain("Composition zones:");
     expect(result.productionPrompt).not.toContain("brand palette above");
     expect(occurrences(result.productionPrompt, "Logo:")).toBe(1);
-    expect(words(result.productionPrompt)).toBeLessThanOrEqual(850);
+    expect(occurrences(result.productionPrompt, "Layout preset:")).toBe(1);
+    expect(occurrences(result.productionPrompt, "Background preset:")).toBe(1);
+    expect(words(result.productionPrompt)).toBeLessThanOrEqual(800);
+  });
+
+  it("uses one brand-agnostic visual template across registered brands", () => {
+    const templateSource = readFileSync(new URL("../src/lib/prompt-builder/visual-prompt-template.ts", import.meta.url), "utf8");
+    for (const forbidden of ["SupplySync360", "Executive Overview", "RainFin", "Thenga", "BMA/Open", "content/brands/"]) {
+      expect(templateSource).not.toContain(forbidden);
+    }
+
+    const moduleHeadings = [
+      "TASK",
+      "SOURCE OF TRUTH",
+      "BRAND + PROJECT",
+      "DECK FRAME",
+      "TYPOGRAPHY",
+      "CONTENT",
+      "IMAGE DIRECTION",
+      "GUARDRAILS",
+    ];
+
+    for (const brandId of ["supplysync360", "rainfin", "thenga", "bma-open"]) {
+      const content = contentItems.find((item) => item.brandId === brandId);
+      expect(content).toBeTruthy();
+      const result = compilePrompt({
+        brandId,
+        projectId: content!.projectId,
+        contentId: content!.id,
+        outputProfileId: "landscape_image_16_9",
+      });
+      const positions = moduleHeadings.map((heading) => result.productionPrompt.indexOf(`\n${heading}\n`) >= 0
+        ? result.productionPrompt.indexOf(`\n${heading}\n`)
+        : result.productionPrompt.indexOf(`${heading}\n`));
+
+      expect(positions.every((position) => position >= 0)).toBe(true);
+      expect([...positions].sort((a, b) => a - b)).toEqual(positions);
+      expect(occurrences(result.productionPrompt, "Logo:")).toBe(1);
+      expect(occurrences(result.productionPrompt, "Layout preset:")).toBe(1);
+      expect(occurrences(result.productionPrompt, "Background preset:")).toBe(1);
+      if (result.promptPreview.visibleText.trim()) {
+        expect(occurrences(result.productionPrompt, result.promptPreview.visibleText.trim())).toBe(1);
+      } else {
+        expect(result.warnings).toContain("Missing Visible Text section.");
+      }
+      if (brandId !== "supplysync360") {
+        expect(result.productionPrompt).not.toContain("content/brands/supplysync360/");
+      }
+    }
+  });
+
+  it("keeps 16:9 visual slides in one clean generation mode", () => {
+    const direct = compilePrompt({
+      brandId: "supplysync360",
+      projectId: "executive-overview",
+      contentId: "ss360-slide-01",
+      outputProfileId: "landscape_image_16_9",
+    });
+    const composited = compilePrompt({
+      brandId: "supplysync360",
+      projectId: "executive-overview",
+      contentId: "ss360-slide-01",
+      outputProfileId: "landscape_image_16_9",
+      generationMode: "app_composited",
+    });
+
+    expect(direct.productionPrompt).toContain("Generation mode: direct_chatgpt");
+    expect(direct.productionPrompt).toContain("Header: SupplySync360 | Executive Overview");
+    expect(direct.productionPrompt).toContain("Logo: content/brands/supplysync360/assets/");
+    expect(composited.productionPrompt).toContain("Generation mode: app_composited");
+    expect(composited.productionPrompt).toContain("Create the body visual only. The app applies the master frame");
+    expect(composited.productionPrompt).not.toContain("Generation mode: direct_chatgpt");
+
+    for (const prompt of [direct.productionPrompt, composited.productionPrompt]) {
+      expect(occurrences(prompt, "Generation mode:")).toBe(1);
+      expect(prompt).not.toMatch(/3840x2160|3306x1860|\bx=\d+|\by=\d+/);
+      expect(prompt).not.toContain("BODY ARTWORK ONLY");
+      expect(prompt).not.toContain("APP-RENDERED MASTER FRAME");
+      expect(prompt).not.toContain("DIRECT CHATGPT FALLBACK");
+      expect(prompt).not.toMatch(/\bLinkedIn\b|\b4:5\b|accompanying post/i);
+    }
+  });
+
+  it("selects market-aware layouts and validates incompatible overrides", () => {
+    const marketContent = contentItems.find((item) =>
+      item.path.endsWith("content/projects/thenga/standard-bank-pitch/visuals/default-visual-set/05-market-opportunity.md")
+    );
+    expect(marketContent).toBeTruthy();
+
+    const automatic = compilePrompt({
+      brandId: marketContent!.brandId,
+      projectId: marketContent!.projectId,
+      contentId: marketContent!.id,
+      outputProfileId: "landscape_image_16_9",
+    });
+    const incompatible = compilePrompt({
+      brandId: marketContent!.brandId,
+      projectId: marketContent!.projectId,
+      contentId: marketContent!.id,
+      outputProfileId: "landscape_image_16_9",
+      layoutPresetId: "governance_timeline",
+    });
+
+    expect(automatic.dynamicLayoutPlan.contentKind).toBe("market_opportunity");
+    expect(["market_opportunity_snapshot", "executive_market_brief"]).toContain(automatic.dynamicLayoutPlan.layoutPresetId);
+    expect(incompatible.promptLint.issues.map((issue) => issue.code)).toContain("market-layout-mismatch");
+  });
+
+  it("flags placeholder exact visible text in visual slides", () => {
+    const result = compilePrompt({
+      brandId: "supplysync360",
+      projectId: "executive-overview",
+      contentId: "ss360-slide-01",
+      outputProfileId: "landscape_image_16_9",
+      markdownOverride: "## Intent\nTest.\n\n## Visible Text\nInsert title here\n\n## Image Brief\nTest image.",
+    });
+
+    expect(result.promptLint.issues.map((issue) => issue.code)).toContain("placeholder-visible-text");
+  });
+
+  it("registers the reusable canonical layout presets", () => {
+    const ids = new Set(layoutPresets.map((preset) => preset.id));
+    for (const id of [
+      "hero_scene_overlay",
+      "centre_stage_diagram",
+      "vertical_journey",
+      "horizontal_timeline",
+      "outcome_wall",
+      "signal_funnel",
+      "layered_architecture",
+      "executive_summary_grid",
+    ]) {
+      expect(ids.has(id)).toBe(true);
+    }
   });
 
   it("omits missing sections from the compact production prompt", () => {
@@ -118,7 +260,7 @@ describe("compilePrompt", () => {
     expect(result.productionPrompt).not.toContain("default_output:");
   });
 
-  it("compiles document and pdf content with document-specific sections", () => {
+  it("compiles concise, exclusive Word and PDF document prompts", () => {
     const doc = compilePrompt({
       brandId: "supplysync360",
       projectId: "executive-overview",
@@ -133,23 +275,56 @@ describe("compilePrompt", () => {
     });
 
     expect(doc.warnings).toEqual([]);
-    expect(doc.productionPrompt).toContain("A4 portrait document");
-    expect(doc.productionPrompt).toContain("Create A4 page(s)");
+    const requiredHeadings = ["TASK", "SOURCE OF TRUTH", "BRAND + PROJECT", "OUTPUT PROFILE", "DOCUMENT RENDERING RULES", "FINAL OUTPUT REQUIREMENT"];
+    for (const heading of requiredHeadings) expect(doc.productionPrompt).toContain(`${heading}\n`);
+    expect(doc.productionPrompt).toContain("Create one A4 portrait Word document");
+    expect(doc.productionPrompt).toContain("Return only: .docx");
     expect(doc.productionPrompt).toContain("Brand colours:");
     expect(doc.productionPrompt).toContain("#008B8B");
-    expect(doc.productionPrompt).toContain("Header on every page: SupplySync360 | Executive Overview");
-    expect(doc.productionPrompt).toContain("Footer on every page: SupplySync360 | From visibility to coordinated action.");
-    expect(doc.productionPrompt).toContain("header on every page");
+    expect(doc.productionPrompt).toContain("Audience: executives, clients, partners");
+    expect(doc.productionPrompt).toContain("Purpose: position SupplySync360");
+    expect(doc.productionPrompt).toContain("Use the official logo asset: content/brands/supplysync360/assets/supplysync360-logo-white.png.");
+    expect(doc.productionPrompt).toContain("Header:\nSupplySync360 | Executive Overview");
+    expect(doc.productionPrompt).toContain("Footer:\nSupplySync360 | From visibility to coordinated action.");
     expect(doc.productionPrompt).toContain("Client Opportunity Brief");
-    expect(doc.productionPrompt).toContain("Attached source file workflow");
+    expect(doc.productionPrompt).toContain("Use the supplied Markdown source as the exact document source of truth.");
+    expect(doc.productionPrompt).toContain("Render Markdown pipe tables as properly formatted Word tables.");
+    expect(doc.productionPrompt).toContain("Signature sections must begin on a new page.");
     expect(doc.productionPrompt).not.toContain("BEGIN SOURCE MARKDOWN");
-    expect(doc.productionPrompt).not.toContain("Image Brief:");
+    expect(doc.productionPrompt).not.toMatch(/EXCLUSIONS|DIRECT CHATGPT FALLBACK ONLY|The production app owns|Attached source file workflow|Image brief|On-image text|16:9|LinkedIn Post Text/i);
+    expect(doc.productionPrompt).not.toContain("PDF");
     expect(pdf.warnings).toEqual([]);
-    expect(pdf.productionPrompt).toContain("A4 portrait PDF document");
-    expect(pdf.productionPrompt).toContain("02-a4-pdf-investor-one-pager.md");
+    expect(pdf.productionPrompt).toContain("Create one A4 portrait PDF document");
+    expect(pdf.productionPrompt).toContain("Return only: .pdf");
+    expect(pdf.productionPrompt).not.toContain("Word");
+    expect(pdf.productionPrompt).toContain("Render Markdown pipe tables as properly formatted PDF tables.");
   });
 
-  it("can compile a single-message document prompt with inline source markdown", () => {
+  it("treats document layout and page-treatment hints as document analysis, not visual presets", () => {
+    const bmaDocument = contentItems.find((item) =>
+      item.path.endsWith("content/projects/bma-open/client-management/documents/default-document-pack/new-client-business-case-template.md")
+    );
+
+    expect(bmaDocument).toBeTruthy();
+
+    const result = compilePrompt({
+      brandId: bmaDocument!.brandId,
+      projectId: bmaDocument!.projectId,
+      contentId: bmaDocument!.id,
+      outputProfileId: "a4_document_portrait",
+    });
+
+    expect(result.dynamicLayoutPlan.contentKind).toBe("document_template");
+    expect(result.dynamicLayoutPlan.layoutPresetId).toBe("brand_formatted_document");
+    expect(result.dynamicLayoutPlan.backgroundPresetId).toBe("clean_white_form");
+    expect(result.dynamicLayoutPlan.warnings).toEqual([]);
+    expect(result.promptLint.issues.map((issue) => issue.code)).not.toContain("invalid-layout");
+    expect(result.promptLint.issues.map((issue) => issue.code)).not.toContain("invalid-background");
+    expect(result.warnings).not.toContain("Unknown layout preset: brand_formatted_document.");
+    expect(result.warnings).not.toContain("Unknown background preset: clean_document.");
+  });
+
+  it("uses the same clean production prompt across document prompt aliases", () => {
     const result = compilePrompt({
       brandId: "supplysync360",
       projectId: "executive-overview",
@@ -158,26 +333,195 @@ describe("compilePrompt", () => {
       compressionProfile: "singleMessageDocument",
     });
 
-    expect(result.productionPrompt).toContain("BEGIN SOURCE MARKDOWN");
-    expect(result.productionPrompt).toContain("## Body Content");
-    expect(result.documentPromptParts.attachmentPrompt).toContain("Attached source file workflow");
+    expect(result.documentPromptParts.runPrompt).toBe(result.productionPrompt);
+    expect(result.documentPromptParts.attachmentPrompt).toBe(result.productionPrompt);
+    expect(result.documentPromptParts.inlinePrompt).toBe(result.productionPrompt);
+    expect(result.productionPrompt).not.toMatch(/BEGIN SOURCE MARKDOWN|BEGIN BODY CONTENT|fallback/i);
   });
 
-  it("compiles LinkedIn text without image instructions", () => {
+  it("injects document rules for clean Markdown with cover and table of contents content", () => {
+    const rainfinDocument = contentItems.find((item) =>
+      item.path.endsWith("content/projects/rainfin/sticcit/documents/default-document-pack/rainfin-sticcit-novation-agreement.md")
+    );
+
+    expect(rainfinDocument).toBeTruthy();
+
+    const result = compilePrompt({
+      brandId: rainfinDocument!.brandId,
+      projectId: rainfinDocument!.projectId,
+      contentId: rainfinDocument!.id,
+      outputProfileId: "a4_document_portrait",
+    });
+
+    expect(result.promptPreview.detectedSections).toContain("Cover Page Content");
+    expect(result.promptPreview.detectedSections).toContain("Table of Contents");
+    expect(result.promptPreview.ignoredLegacySections).toEqual([]);
+    expect(result.promptPreview.coverPageContent).toContain("Novation, Release and Replacement Services Agreement");
+    expect(result.promptPreview.tableOfContentsContent).toContain("[Background](#1-background)");
+    expect(result.productionPrompt).toContain("Use the supplied Markdown source as the exact document source of truth.");
+    expect(result.productionPrompt).toContain("If a section would begin too near the bottom of a page");
+    expect(result.productionPrompt).toContain("Allow sections to continue naturally across pages once they have started.");
+    expect(result.productionPrompt).not.toContain("Insert a page break before each top-level numbered section");
+    expect(result.productionPrompt).toContain("Signature sections must begin on a new page");
+    expect(result.productionPrompt).toContain("Use increased spacing between signature and completion lines");
+    expect(result.productionPrompt).toContain("Use slightly increased spacing between major sections");
+    expect(result.productionPrompt).toContain("Render Markdown pipe tables as properly formatted Word tables");
+    expect(result.productionPrompt).toContain("Read it completely before creating the document.");
+    expect(result.productionPrompt).toContain("Create the requested document immediately");
+    expect(result.productionPrompt).not.toContain("Create a brand-formatted Word or PDF document from this central Markdown source file.");
+    expect(result.productionPrompt).not.toContain("Logo: Use the official RainFin logo as a large centred logo.");
+    expect(result.productionPrompt).not.toContain("[Background](#1-background)");
+    expect(result.productionPrompt).not.toContain("Registration number: 2008/029213/07");
+    expect(result.productionPrompt).not.toContain("BEGIN SOURCE MARKDOWN");
+    expect(result.productionPrompt).not.toContain("END SOURCE MARKDOWN");
+    expect(result.productionPrompt).not.toContain("BEGIN BODY CONTENT");
+    expect(result.productionPrompt).not.toContain("END BODY CONTENT");
+  });
+
+  it("does not inject source-section cleanup or table-of-contents control chatter", () => {
+    const result = compilePrompt({
+      brandId: "supplysync360",
+      projectId: "executive-overview",
+      contentId: "ss360-doc-01",
+      outputProfileId: "a4_document_portrait",
+    });
+
+    expect(result.promptPreview.detectedSections).not.toContain("Table of Contents");
+    expect(result.promptPreview.tableOfContentsContent).toBe("");
+    expect(result.productionPrompt).not.toMatch(/## Intent|## Layout Hint|## Background Hint|## Document Output Rules|## Table of Contents|frontmatter|metadata/i);
+  });
+
+  it("keeps legacy source diagnostics out of the production document prompt", () => {
+    const bmaDocument = contentItems.find((item) =>
+      item.path.endsWith("content/projects/bma-open/client-management/documents/default-document-pack/new-client-business-case-template.md")
+    );
+
+    expect(bmaDocument).toBeTruthy();
+
+    const result = compilePrompt({
+      brandId: bmaDocument!.brandId,
+      projectId: bmaDocument!.projectId,
+      contentId: bmaDocument!.id,
+      outputProfileId: "a4_document_portrait",
+    });
+
+    expect(result.promptPreview.ignoredLegacySections).toEqual(["Document Output Rules"]);
+    expect(result.warnings).toContain("Legacy output rules found in Markdown. These will be ignored because output rules are now injected by the prompt template.");
+    expect(result.productionPrompt).not.toContain("MD Document Output Rules:");
+    expect(result.productionPrompt).not.toContain("Use the content in `## Body Content` as the source of truth for document generation.");
+    expect(result.productionPrompt).not.toMatch(/legacy|Document Output Rules|Output Rules section/i);
+  });
+
+  it("keeps LinkedIn caption text separate from the generated image prompt", () => {
     const result = compilePrompt({
       brandId: "supplysync360",
       projectId: "executive-overview",
       contentId: "ss360-linkedin-01",
-      outputProfileId: "linkedin_post_text",
+      outputProfileId: "linkedin_asset_4_5",
+      markdownOverride: [
+        "## Intent",
+        "Create a LinkedIn image.",
+        "",
+        "## Visible Text",
+        "Asset Format: 4:5 portrait",
+        "Title: Supply Chains Need Closure",
+        "Body: Visibility matters only when action is assigned.",
+        "",
+        "## LinkedIn Post Text",
+        "This caption is pasted into LinkedIn and must not appear on the image.",
+        "",
+        "## Image Brief",
+        "Create a mobile-readable executive visual.",
+      ].join("\n"),
     });
 
-    expect(result.warnings).toEqual([]);
-    expect(result.productionPrompt).toContain("Do not create an image.");
-    expect(result.productionPrompt).toContain("professional LinkedIn post");
-    expect(result.productionPrompt).not.toContain("Logo asset to attach/render");
-    expect(result.productionPrompt).not.toContain("Image Brief:");
-    expect(result.productionPrompt).toContain("OUTPUT DIRECTION");
-    expect(result.productionPrompt).toContain("Format: LinkedIn written post.");
+    expect(result.productionPrompt).toContain("Supply Chains Need Closure");
+    expect(result.productionPrompt).toContain("Typography for this output:");
+    expect(result.productionPrompt).toContain("44-64 px");
+    expect(result.productionPrompt).not.toContain("This caption is pasted into LinkedIn");
+    expect(result.productionPrompt).not.toContain("Asset Format: 4:5 portrait");
+    expect(result.productionPrompt).not.toContain("Header:");
+    expect(result.productionPrompt).not.toContain("Footer:");
+    expect(result.productionPrompt).not.toContain("signature");
+    expect(result.promptPreview.linkedinPostText).toContain("This caption is pasted into LinkedIn");
+  });
+
+  it("treats legacy LinkedIn Body Content as separate post text and removes the text-post output", () => {
+    const result = compilePrompt({
+      brandId: "supplysync360",
+      projectId: "executive-overview",
+      contentId: "ss360-linkedin-01",
+      outputProfileId: "linkedin_asset_4_5",
+      markdownOverride: "## Intent\nCreate an image.\n\n## Visible Text\nTitle: Visible\n\n## Body Content\nLegacy caption only.\n\n## Image Brief\nUse a simple visual.",
+    });
+
+    expect(result.promptPreview.linkedinPostText).toBe("Legacy caption only.");
+    expect(result.productionPrompt).not.toContain("Legacy caption only.");
+    expect(outputProfiles.some((profile) => profile.id === "linkedin_post_text" || profile.label === "LinkedIn Text Post")).toBe(false);
+  });
+
+  it("keeps every stored LinkedIn caption in the separate preview field and out of image prompts", () => {
+    const linkedInItems = contentItems.filter((item) => item.kind === "linkedin" && item.file.toLowerCase() !== "readme.md");
+
+    expect(linkedInItems.length).toBeGreaterThanOrEqual(19);
+    for (const item of linkedInItems) {
+      const result = compilePrompt({
+        brandId: item.brandId,
+        projectId: item.projectId,
+        contentId: item.id,
+        outputProfileId: "linkedin_asset_4_5",
+      });
+
+      expect(result.promptPreview.detectedSections).toContain("LinkedIn Post Text");
+      expect(result.promptPreview.detectedSections).not.toContain("Body Content");
+      expect(result.promptPreview.linkedinPostText.trim()).not.toBe("");
+      expect(result.productionPrompt).not.toContain(result.promptPreview.linkedinPostText.trim());
+    }
+  });
+
+  it("derives single-image or carousel behavior from Image Brief", () => {
+    const carousel = compilePrompt({
+      brandId: "supplysync360",
+      projectId: "executive-overview",
+      contentId: "ss360-linkedin-01",
+      outputProfileId: "linkedin_asset_4_5",
+      markdownOverride: "## Intent\nCreate a LinkedIn asset.\n\n## Visible Text\nPage 1 Title: First\nPage 2 Title: Second\n\n## LinkedIn Post Text\nCaption only.\n\n## Image Brief\nCreate a 2-image carousel as separate 4:5 images, one image per page.",
+    });
+    const single = compilePrompt({
+      brandId: "supplysync360",
+      projectId: "executive-overview",
+      contentId: "ss360-linkedin-01",
+      outputProfileId: "linkedin_asset_4_5",
+      markdownOverride: "## Intent\nCreate a LinkedIn asset.\n\n## Visible Text\nTitle: One image\n\n## LinkedIn Post Text\nCaption only.\n\n## Image Brief\nCreate one clear 4:5 social visual.",
+    });
+
+    expect(carousel.productionPrompt).toContain("Resolved asset mode from Image Brief: create a set of separate 4:5 images");
+    expect(single.productionPrompt).toContain("Resolved asset mode from Image Brief: create one finished 4:5 image");
+    expect(outputProfiles.filter((profile) => profile.id.startsWith("linkedin_")).map((profile) => profile.id)).toEqual(["linkedin_asset_4_5"]);
+  });
+
+  it("keeps visual and LinkedIn image prompts free of document pagination rules", () => {
+    const visual = compilePrompt({
+      brandId: "supplysync360",
+      projectId: "executive-overview",
+      contentId: "ss360-slide-01",
+      outputProfileId: "landscape_image_16_9",
+    });
+    const linkedinImage = compilePrompt({
+      brandId: "supplysync360",
+      projectId: "executive-overview",
+      contentId: "ss360-slide-01",
+      outputProfileId: "linkedin_asset_4_5",
+    });
+
+    for (const prompt of [visual.productionPrompt, linkedinImage.productionPrompt]) {
+      expect(prompt).toContain("BEGIN EXACT VISIBLE TEXT");
+      expect(prompt).not.toContain("Insert a page break");
+      expect(prompt).not.toContain("table of contents");
+      expect(prompt).not.toContain("Table of Contents");
+      expect(prompt).not.toContain("signature blocks");
+      expect(prompt).not.toContain("Render Markdown pipe tables");
+    }
   });
 
   it("compiles email output as exact text/email without image instructions", () => {
@@ -188,7 +532,6 @@ describe("compilePrompt", () => {
       outputProfileId: "email_brief",
     });
 
-    expect(result.warnings).toEqual([]);
     expect(result.productionPrompt).toContain("OUTPUT DIRECTION");
     expect(result.productionPrompt).toContain("client-facing email");
     expect(result.productionPrompt).not.toContain("BEGIN EXACT VISIBLE TEXT");
@@ -280,7 +623,7 @@ describe("compilePrompt", () => {
     expect(result.productionPrompt).toContain("#D6A11E");
     expect(result.productionPrompt).toContain("content/brands/thenga/assets/");
     expect(result.productionPrompt).not.toContain("content/brands/supplysync360/assets/");
-    expect(result.productionPrompt).toContain("Attached source file workflow");
+    expect(result.productionPrompt).toContain("Use the supplied Markdown source as the exact document source of truth.");
     expect(result.debugPrompt).toContain("Full Source Rules:");
   });
 
@@ -294,19 +637,13 @@ describe("compilePrompt", () => {
 
     expect(result.productionPrompt).toContain("Header: THENGA SOCIAL ENTERPRISES | Investor Pitch for Standard Bank");
     expect(result.productionPrompt).toContain("Footer: Trust | Inclusion | Participation | Prosperity | Copyright 2026. All Rights Reserved.");
-    expect(result.productionPrompt).toContain("Logo: use official PNG asset content/brands/thenga/assets/thenga-logo-transparent-dark.png");
-    expect(result.productionPrompt).toContain("header on every slide");
-    expect(result.productionPrompt).toContain("Deck structure lock: 16:9 landscape");
-    expect(result.productionPrompt).toContain("Fixed header zone: 8-10% of slide height");
-    expect(result.productionPrompt).toContain("Fixed footer zone: 6-8% of slide height");
-    expect(result.productionPrompt).toContain("header text on the same horizontal line as the logo");
-    expect(result.productionPrompt).toContain("header font 8.5-10pt");
-    expect(result.productionPrompt).toContain("footer text 8-9pt");
-    expect(result.productionPrompt).toContain("Only the body area may vary");
-    expect(result.productionPrompt).toContain("Before finalizing, verify header, footer, logo placement, logo size, outer margins and footer wording match the deck master.");
+    expect(result.productionPrompt).toContain("Logo: content/brands/thenga/assets/thenga-logo.png");
+    expect(result.productionPrompt).toContain("Generation mode: direct_chatgpt");
+    expect(result.productionPrompt).not.toContain("3840x2160");
+    expect(result.productionPrompt).toContain("Layout preset: industry_constellation");
     expect(result.productionPrompt).not.toContain("Typography: Document title:");
     expect(result.productionPrompt).not.toContain("content/brands/thenga/assets/thenga-logo.svg");
-    expect(result.promptPreview.logoAsset).toBe("content/brands/thenga/assets/thenga-logo-transparent-dark.png");
+    expect(result.promptPreview.logoAsset).toBe("content/brands/thenga/assets/thenga-logo.png");
     expect(occurrences(result.productionPrompt, "Logo:")).toBe(1);
   });
 
@@ -333,15 +670,12 @@ describe("compilePrompt", () => {
       backgroundTheme: "dark",
     });
 
-    expect(balanced.productionPrompt).toContain("Background theme: Balanced In-Between");
-    expect(balanced.productionPrompt).toContain("saturated brand-colour gradient bands");
-    expect(balanced.productionPrompt).toContain("luminous accent lines");
-    expect(light.productionPrompt).toContain("Background theme: Light");
-    expect(light.productionPrompt).toContain("Light must not mean plain white");
-    expect(light.productionPrompt).toContain("gradient movement");
-    expect(dark.productionPrompt).toContain("Background theme: Dark");
-    expect(dark.productionPrompt).toContain("multi-stop gradients");
-    expect(dark.productionPrompt).toContain("luminous brand glows");
+    expect(balanced.productionPrompt).toContain("Background preset: balanced_in_between_depth");
+    expect(balanced.productionPrompt).toContain("balanced light-to-medium mode");
+    expect(light.productionPrompt).toContain("Background preset: balanced_in_between_depth");
+    expect(light.productionPrompt).toContain("bright, brand-tinted light mode");
+    expect(dark.productionPrompt).toContain("Background preset: balanced_in_between_depth");
+    expect(dark.productionPrompt).toContain("deep brand-toned mode");
     expect(light.productionPrompt).toContain("brand");
     expect(dark.productionPrompt).toContain("Brand colours:");
   });
@@ -380,8 +714,8 @@ describe("compilePrompt", () => {
     });
 
     expect(result.dynamicLayoutPlan.backgroundPresetId).not.toMatch(/midnight|graphite/i);
-    expect(result.productionPrompt).toContain("saturated brand-colour gradient bands");
-    expect(result.productionPrompt).toContain("vibrant");
+    expect(result.productionPrompt).toContain(`Background preset: ${result.dynamicLayoutPlan.backgroundPresetId}`);
+    expect(occurrences(result.productionPrompt, "Background preset:")).toBe(1);
   });
 
   it("uses varied content-aware layouts for the SupplySync360 executive overview deck", () => {
@@ -415,7 +749,7 @@ describe("compilePrompt", () => {
     expect(new Set(layouts).size).toBe(cases.length);
   });
 
-  it("adds layout variation, text emphasis and striking imagery rules to SS360 prompts", () => {
+  it("uses one selected layout preset without a list of deck alternatives", () => {
     const result = compilePrompt({
       brandId: "supplysync360",
       projectId: "executive-overview",
@@ -423,12 +757,11 @@ describe("compilePrompt", () => {
       outputProfileId: "landscape_image_16_9",
     });
 
-    expect(result.productionPrompt).toContain("Do not repeat the same text-left/image-right block composition");
-    expect(result.productionPrompt).toContain("bold typographic hierarchy");
-    expect(result.productionPrompt).toContain("coloured emphasis");
-    expect(result.productionPrompt).toContain("Composition zones:");
-    expect(result.productionPrompt).toContain("central-loop");
-    expect(result.productionPrompt).toContain("Use striking dimensional imagery");
+    expect(result.productionPrompt).toContain("Layout preset: circular_control_loop");
+    expect(result.productionPrompt).toContain("centre-stage circular operating model");
+    expect(result.productionPrompt).not.toContain("Composition zones:");
+    expect(result.productionPrompt).not.toContain("vertical journeys, horizontal timelines");
+    expect(occurrences(result.productionPrompt, "Layout preset:")).toBe(1);
   });
 
   it("uses background theme when resolving Thenga logo variants from brand rules", () => {
@@ -458,7 +791,7 @@ describe("compilePrompt", () => {
       {
         brandId: "supplysync360",
         projectId: "executive-overview",
-        expectedLogo: "content/brands/supplysync360/assets/supplysync360-logo.png",
+        expectedLogo: "content/brands/supplysync360/assets/supplysync360-logo-white.png",
       },
       {
         brandId: "thenga",
@@ -468,7 +801,7 @@ describe("compilePrompt", () => {
       {
         brandId: "thenga",
         projectId: "standard-bank-pitch",
-        expectedLogo: "content/brands/thenga/assets/thenga-logo-transparent-dark.png",
+        expectedLogo: "content/brands/thenga/assets/thenga-logo.png",
       },
       {
         brandId: "rainfin",
@@ -493,8 +826,8 @@ describe("compilePrompt", () => {
       });
 
       expect(result.promptPreview.logoAsset).toBe(item.expectedLogo);
-      expect(result.productionPrompt).toContain(item.expectedLogo);
-      expect(result.productionPrompt).toContain("Logo: use official PNG asset");
+      expect(result.productionPrompt).toContain(`Logo: ${item.expectedLogo}`);
+      expect(result.productionPrompt).toContain("Generation mode: direct_chatgpt");
       expect(result.productionPrompt).not.toContain("/brands/supplysync360/assets/unknown");
     }
   });

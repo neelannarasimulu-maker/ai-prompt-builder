@@ -40,6 +40,7 @@ export interface OutputProfile {
   format: string;
   useCase: string;
   promptInstruction: string;
+  typography?: string;
 }
 
 export interface CompilePromptInput {
@@ -48,6 +49,7 @@ export interface CompilePromptInput {
   contentId: string;
   outputProfileId: string;
   markdownOverride?: string;
+  generationMode?: "direct_chatgpt" | "app_composited";
 }
 
 export interface CompileMetadata {

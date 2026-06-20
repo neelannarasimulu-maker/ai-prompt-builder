@@ -2,6 +2,7 @@ import { outputProfiles } from "./output-profiles";
 import { compilePrompt as compileHydratedPrompt, type CompilePromptInput, type CompiledPromptResult, type PromptCompressionProfile } from "./prompt-compiler";
 import { brands, contentItems, projects } from "./registry";
 import type { BackgroundTheme } from "./background-themes";
+import type { VisualGenerationMode } from "./visual-prompt-template";
 
 export type CompilePromptByIdInput = {
   brandId: string;
@@ -13,6 +14,8 @@ export type CompilePromptByIdInput = {
   backgroundPresetId?: string;
   documentBackgroundPresetId?: string;
   backgroundTheme?: BackgroundTheme;
+  generationMode?: VisualGenerationMode;
+  safeMargins?: string;
   compressionProfile?: PromptCompressionProfile;
 };
 
@@ -109,6 +112,7 @@ function hydrateCompileInput(input: CompilePromptByIdInput): CompilePromptInput 
     logoRules: getBrandFile(brand.folder, "logo-rules.md"),
     typographyRules: getBrandFile(brand.folder, "typography.md"),
     documentRules: getBrandFile(brand.folder, "document-rules.md"),
+    projectDocumentRules: getMarkdown(`${project.folder}/document-rules.md`),
     tableRules: getBrandFile(brand.folder, "table-rules.md"),
     projectRules: getMarkdown(`${project.folder}/project.md`),
     visualRules: [brandVisualRules, projectVisualRules].filter(Boolean).join("\n\n"),
@@ -118,6 +122,8 @@ function hydrateCompileInput(input: CompilePromptByIdInput): CompilePromptInput 
     backgroundPresetId: input.backgroundPresetId,
     documentBackgroundPresetId: input.documentBackgroundPresetId,
     backgroundTheme: input.backgroundTheme,
+    generationMode: input.generationMode,
+    safeMargins: input.safeMargins,
     compressionProfile: input.compressionProfile,
   };
 }

@@ -4,6 +4,10 @@ import {
   inferBackgroundThemeFromPreset,
 } from "../src/lib/prompt-builder/background-themes";
 import { backgroundPresets, getBackgroundPreset } from "../src/lib/prompt-builder/background-presets";
+import {
+  documentBackgroundPresets,
+  getDocumentBackgroundPreset,
+} from "../src/lib/prompt-builder/document-background-presets";
 
 describe("background taxonomy", () => {
   it("treats light as softly tinted rather than blank white", () => {
@@ -23,8 +27,8 @@ describe("background taxonomy", () => {
     expect(balanced.visualPrompt).toContain("saturated brand-colour gradient bands");
     expect(balanced.visualPrompt).toContain("luminous accent lines");
     expect(balanced.visualPrompt).toContain("avoid beige/grey blandness");
-    expect(preset?.prompt).toContain("saturated colour bands");
-    expect(preset?.prompt).toContain("bright content panels");
+    expect(preset?.prompt).toContain("light-to-medium brand gradient");
+    expect(preset?.prompt).toContain("bright readable content areas");
   });
 
   it("keeps dark backgrounds colourful, shaded and gradient-led", () => {
@@ -34,7 +38,8 @@ describe("background taxonomy", () => {
     expect(dark.visualPrompt).toContain("multi-stop gradients");
     expect(dark.visualPrompt).toContain("luminous brand glows");
     expect(dark.visualPrompt).toContain("never as a single flat dark colour");
-    expect(midnight?.prompt).toContain("coloured signal points");
+    expect(midnight?.prompt).toContain("connected pathways");
+    expect(midnight?.prompt).toContain("light protected content panels");
   });
 
   it("classifies soft in-between presets as light and the new midpoint as balanced", () => {
@@ -48,9 +53,15 @@ describe("background taxonomy", () => {
     const auto = getBackgroundPreset("auto");
     const balanced = getBackgroundPreset("balanced_brand_gradient");
 
-    expect(auto.prompt).toContain("colour-rich");
-    expect(auto.prompt).toContain("saturated brand gradient bands");
-    expect(balanced.prompt).toContain("bright readable centre");
-    expect(balanced.prompt).toContain("vibrant, not flat or bland");
+    expect(auto.prompt).toContain("balanced brand-colour canvas");
+    expect(auto.prompt).toContain("protected reading zones");
+    expect(balanced.prompt).toContain("bright centre");
+    expect(backgroundPresets.every((preset) => preset.prompt.split(/\s+/).length <= 30)).toBe(true);
+  });
+
+  it("keeps document page treatments brand-neutral by default", () => {
+    expect(getDocumentBackgroundPreset().id).toBe("auto_brand_document");
+    expect(documentBackgroundPresets.map((preset) => preset.id)).not.toContain("bma_open_clean_document");
+    expect(documentBackgroundPresets[0].prompt).toContain("selected brand and project document rules");
   });
 });

@@ -1,11 +1,16 @@
 import { defineConfig, type Plugin } from "vite";
 import react from "@vitejs/plugin-react";
 import fs from "node:fs";
+import crypto from "node:crypto";
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import pptxgen from "pptxgenjs";
 import { PDFDocument } from "pdf-lib";
+import { renderLockedMasterFrame } from "./server/master-frame-renderer";
+import { renderLockedDocument } from "./server/document-renderer";
+import { getMasterFrameSpec } from "./src/lib/prompt-builder/master-frame";
+import type { MasterFrameMetadata } from "./src/lib/prompt-builder/project-generated-content-api";
 import {
   normalizeRpaImageFilename,
   normalizeRpaVersionLabel,
@@ -24,12 +29,79 @@ import {
   type AssistDownloadCandidate,
   type ChatGptAssistImportInput,
 } from "./src/lib/prompt-builder/chatgpt-assist";
+import {
+  buildProjectScaffold,
+  selectedScaffoldFiles,
+  validateCreateProjectInput,
+  type CreateProjectInput,
+  type RuntimeContentFile,
+  type RuntimeProject,
+} from "./src/lib/prompt-builder/project-scaffold";
+import {
+  createDistributionRecordsFromDraft,
+  validateDistributionDraft,
+  validateDistributionRecord,
+  withDefaultDistributionDate,
+  type DistributionDraft,
+  type DistributionRecord,
+} from "./src/lib/prompt-builder/distribution";
+import {
+  readDistributionStoreFile,
+  mergeDistributionStores,
+  writeDistributionStoreFile,
+  type DistributionStore,
+} from "./server/distribution-store";
+import {
+  contentSetTypes,
+  defaultContentSetNames,
+  isIgnoredContentPath,
+  normalizeVersionFolder,
+  parseContentSetPath,
+  type ContentSetType,
+} from "./src/lib/prompt-builder/content-set-paths";
+import {
+  ensureContentSet,
+  getNextVersionFolderOnDisk,
+  migrateProjectStructure,
+} from "./server/content-structure";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const projectRoot = __dirname;
-const contentRoot = path.join(projectRoot, "content");
+const defaultContentRoot = path.join(projectRoot, "content");
+const appSettingsPath = path.join(projectRoot, ".local", "app-settings.json");
+type AppSettings = { contentRoot: string };
+function readSettings(settingsPath: string): Partial<AppSettings> {
+  try {
+    return fs.existsSync(settingsPath)
+      ? JSON.parse(fs.readFileSync(settingsPath, "utf8")) as Partial<AppSettings>
+      : {};
+  } catch {
+    return {};
+  }
+}
+function findLegacySettings(): { settings: Partial<AppSettings>; path?: string } {
+  const settingsDirectory = path.dirname(appSettingsPath);
+  if (!fs.existsSync(settingsDirectory)) return { settings: {} };
+  for (const entry of fs.readdirSync(settingsDirectory)) {
+    const candidatePath = path.join(settingsDirectory, entry);
+    if (candidatePath === appSettingsPath || path.extname(candidatePath).toLowerCase() !== ".json") continue;
+    try {
+      const candidate = JSON.parse(fs.readFileSync(candidatePath, "utf8")) as Record<string, unknown>;
+      if (typeof candidate.contentRoot === "string" && typeof candidate.token === "string") {
+        return { settings: { contentRoot: candidate.contentRoot }, path: candidatePath };
+      }
+    } catch {
+      // Ignore unrelated or invalid local JSON files.
+    }
+  }
+  return { settings: {} };
+}
+const savedAppSettings = readSettings(appSettingsPath);
+const legacySettings = savedAppSettings.contentRoot ? { settings: {} } : findLegacySettings();
+const migratedSettings = legacySettings.settings;
+let contentRoot = path.resolve(process.env.PROMPT_BUILDER_CONTENT_ROOT || savedAppSettings.contentRoot || migratedSettings.contentRoot || defaultContentRoot);
 const maxJsonBodyBytes = 25 * 1024 * 1024;
 const maxUploadBytes = 18 * 1024 * 1024;
 const maxExportBodyBytes = 2 * 1024 * 1024;
@@ -147,18 +219,37 @@ const chatGptRpaJobs = new Map<string, ChatGptRpaRuntimeJob>();
 const allowedGeneratedCategories = new Set([
   "visuals",
   "documents",
-  "pdfs",
-  "linkedin-posts",
-  "prompts",
-  "backgrounds",
-  "final-renders",
-  "other",
+  "linkedin",
 ]);
-
 function ensureDirectory(directoryPath: string): void {
   if (!fs.existsSync(directoryPath)) {
     fs.mkdirSync(directoryPath, { recursive: true });
   }
+}
+
+function saveAppSettings(): void {
+  ensureDirectory(path.dirname(appSettingsPath));
+  fs.writeFileSync(appSettingsPath, JSON.stringify({ contentRoot }, null, 2), "utf8");
+  if (legacySettings.path && fs.existsSync(legacySettings.path)) fs.rmSync(legacySettings.path, { force: true });
+}
+
+if (!savedAppSettings.contentRoot && migratedSettings.contentRoot) saveAppSettings();
+
+function contentPathFromRelative(relativePath: string): string {
+  const normalized = relativePath.replace(/\\/g, "/").replace(/^\/+/, "").replace(/^content\/?/, "");
+  return path.resolve(contentRoot, normalized);
+}
+
+function contentRelativePath(absolutePath: string): string {
+  return `content/${path.relative(contentRoot, absolutePath).replace(/\\/g, "/")}`;
+}
+
+function initializeContentRoot(targetRoot: string): void {
+  ensureDirectory(targetRoot);
+  ensureDirectory(path.join(targetRoot, "projects"));
+  const sourceBrands = path.join(defaultContentRoot, "brands");
+  const targetBrands = path.join(targetRoot, "brands");
+  if (fs.existsSync(sourceBrands)) fs.cpSync(sourceBrands, targetBrands, { recursive: true, force: false, errorOnExist: false });
 }
 
 function isInsideRoot(rootPath: string, candidatePath: string): boolean {
@@ -249,7 +340,7 @@ function normalizeProjectFolder(projectFolder: string): string {
 
 function getProjectFolderAbsolute(projectFolder: string): string {
   const normalizedProjectFolder = normalizeProjectFolder(projectFolder);
-  const absoluteProjectFolder = path.resolve(projectRoot, normalizedProjectFolder);
+  const absoluteProjectFolder = contentPathFromRelative(normalizedProjectFolder);
 
   if (!isInsideRoot(contentRoot, absoluteProjectFolder)) {
     throw new Error("Project folder must be inside the content folder.");
@@ -258,19 +349,87 @@ function getProjectFolderAbsolute(projectFolder: string): string {
   return absoluteProjectFolder;
 }
 
-function getGeneratedContentRoot(projectFolder: string): string {
-  return path.join(getProjectFolderAbsolute(projectFolder), "generated-content");
+function normalizeGeneratedCategory(category: string): ContentSetType {
+  if (category === "linkedin-posts") return "linkedin";
+  return allowedGeneratedCategories.has(category) ? category as ContentSetType : "documents";
+}
+
+function resolveContentSetName(projectFolder: string, type: ContentSetType, contentSet?: string): string {
+  if (contentSet?.trim()) return slugSegment(contentSet);
+  const projectRoot = getProjectFolderAbsolute(projectFolder);
+  const typeRoot = path.join(projectRoot, type);
+  if (fs.existsSync(typeRoot)) {
+    const existing = fs.readdirSync(typeRoot, { withFileTypes: true })
+      .find((entry) => entry.isDirectory() && !entry.name.startsWith("."));
+    if (existing) return existing.name;
+  }
+  return defaultContentSetNames[type];
+}
+
+function getGeneratedContentRoot(projectFolder: string, category = "documents", contentSet?: string): string {
+  const type = normalizeGeneratedCategory(category);
+  const setName = resolveContentSetName(projectFolder, type, contentSet);
+  return path.join(getProjectFolderAbsolute(projectFolder), type, setName, "_generated");
+}
+
+function getDistributionStorePath(projectFolder: string): string {
+  return path.join(getProjectFolderAbsolute(projectFolder), "distribution.json");
+}
+
+function readDistributionStore(projectFolder: string): DistributionStore {
+  return readDistributionStoreFile(getDistributionStorePath(projectFolder));
+}
+
+function writeDistributionStore(projectFolder: string, store: DistributionStore): void {
+  writeDistributionStoreFile(getDistributionStorePath(projectFolder), store);
+}
+
+function migrateLegacyDistributionStore(): void {
+  const legacyPath = path.join(contentRoot, "distribution.json");
+  if (!fs.existsSync(legacyPath)) return;
+  const legacy = readDistributionStoreFile(legacyPath);
+  const byProject = new Map<string, DistributionRecord[]>();
+  for (const record of legacy.records) {
+    byProject.set(record.projectFolder, [...(byProject.get(record.projectFolder) || []), record]);
+  }
+  for (const [projectFolder, records] of byProject) {
+    const existing = readDistributionStore(projectFolder);
+    writeDistributionStore(projectFolder, mergeDistributionStores(existing, records));
+  }
+  fs.rmSync(legacyPath, { force: true });
+}
+
+function distributionReferenceErrors(input: Pick<DistributionRecord, "projectFolder" | "contentSourcePath" | "generatedContentIds">): string[] {
+  const errors: string[] = [];
+  try {
+    getProjectFolderAbsolute(input.projectFolder);
+  } catch {
+    errors.push("Project folder must be inside the configured content root.");
+  }
+  const refs = [input.contentSourcePath, ...input.generatedContentIds].filter(Boolean) as string[];
+  for (const ref of refs) {
+    const absolute = contentPathFromRelative(ref);
+    if (!isInsideRoot(contentRoot, absolute) || ref.includes("..")) errors.push(`Invalid content reference: ${ref}`);
+  }
+  const projectPrefix = `${normalizeProjectFolder(input.projectFolder)}/`;
+  if (input.contentSourcePath && !input.contentSourcePath.replace(/\\/g, "/").startsWith(projectPrefix)) {
+    errors.push("Source content must belong to the selected project.");
+  }
+  for (const generatedId of input.generatedContentIds) {
+    const normalized = generatedId.replace(/\\/g, "/");
+    if (!normalized.startsWith(projectPrefix) || !normalized.includes("/_generated/")) {
+      errors.push("Generated files must belong to the selected project.");
+    }
+  }
+  return errors;
 }
 
 function getGeneratedCategoryFolder(input: {
   projectFolder: string;
   category: string;
+  contentSet?: string;
 }): string {
-  const category = allowedGeneratedCategories.has(input.category)
-    ? input.category
-    : "other";
-
-  return path.join(getGeneratedContentRoot(input.projectFolder), category);
+  return getGeneratedContentRoot(input.projectFolder, input.category, input.contentSet);
 }
 
 function walkFiles(directoryPath: string): string[] {
@@ -282,6 +441,8 @@ function walkFiles(directoryPath: string): string[] {
   for (const entry of entries) {
     const fullPath = path.join(directoryPath, entry.name);
 
+    if (entry.isSymbolicLink()) continue;
+
     if (entry.isDirectory()) {
       files.push(...walkFiles(fullPath));
     } else if (!entry.name.startsWith(".")) {
@@ -290,6 +451,14 @@ function walkFiles(directoryPath: string): string[] {
   }
 
   return files;
+}
+
+function removeEmptyDirectoryTree(directoryPath: string): void {
+  if (!fs.existsSync(directoryPath) || fs.lstatSync(directoryPath).isSymbolicLink()) return;
+  for (const entry of fs.readdirSync(directoryPath, { withFileTypes: true })) {
+    if (entry.isDirectory() && !entry.isSymbolicLink()) removeEmptyDirectoryTree(path.join(directoryPath, entry.name));
+  }
+  if (fs.readdirSync(directoryPath).length === 0) fs.rmdirSync(directoryPath);
 }
 
 function getFileType(filename: string): string {
@@ -368,9 +537,9 @@ function getStringQueryParam(url: URL, name: string): string {
 }
 
 function ensureGeneratedScaffold(projectFolder: string): void {
-  for (const category of allowedGeneratedCategories) {
-    ensureDirectory(getGeneratedCategoryFolder({ projectFolder, category }));
-  }
+  const projectRoot = getProjectFolderAbsolute(projectFolder);
+  migrateProjectStructure(projectRoot);
+  for (const category of contentSetTypes) ensureContentSet(projectRoot, category);
 }
 
 function readJsonFile<T>(filename: string): Partial<T> {
@@ -425,7 +594,7 @@ function resolveUserPath(input: string): string {
 }
 
 function getPathInsideProject(relativePath: string, label: string): string {
-  const absolutePath = path.resolve(projectRoot, relativePath.replace(/\\/g, "/"));
+  const absolutePath = contentPathFromRelative(relativePath);
 
   if (!isInsideRoot(contentRoot, absolutePath)) {
     throw new Error(`${label} must be inside the content folder.`);
@@ -434,18 +603,36 @@ function getPathInsideProject(relativePath: string, label: string): string {
   return absolutePath;
 }
 
+async function renderProductionArtwork(artwork: Buffer, masterFrame: MasterFrameMetadata): Promise<Buffer> {
+  if (!["landscape_image_16_9", "portrait_image_4_5", "linkedin_asset_4_5"].includes(masterFrame.outputProfileId)) {
+    throw new Error(`Unsupported image master-frame profile: ${masterFrame.outputProfileId}`);
+  }
+  if (!getMasterFrameSpec(masterFrame.outputProfileId)) {
+    throw new Error(`Unsupported master-frame profile: ${masterFrame.outputProfileId}`);
+  }
+  return renderLockedMasterFrame({
+    artwork,
+    profileId: masterFrame.outputProfileId,
+    headerText: masterFrame.headerText,
+    footerText: masterFrame.footerText,
+    logoPath: masterFrame.logoAsset ? getPathInsideProject(masterFrame.logoAsset, "Logo asset") : undefined,
+  });
+}
+
 function getAssistVisualVersionFolder(input: {
   projectFolder: string;
+  contentSet: string;
   versionLabel: string;
 }): string {
   const visualsRoot = getGeneratedCategoryFolder({
     projectFolder: input.projectFolder,
     category: "visuals",
+    contentSet: input.contentSet,
   });
-  const versionFolder = path.join(visualsRoot, normalizeAssistVersionLabel(input.versionLabel));
+  const versionFolder = path.join(visualsRoot, normalizeVersionFolder(input.versionLabel));
 
   if (!isInsideRoot(visualsRoot, versionFolder)) {
-    throw new Error("Target version folder must stay inside generated-content/visuals.");
+    throw new Error("Target version folder must stay inside the visual set's _generated folder.");
   }
 
   return versionFolder;
@@ -470,16 +657,18 @@ function listAssistDownloadCandidates(downloadsFolder: string): AssistDownloadCa
 
 function getRpaVisualVersionFolder(input: {
   projectFolder: string;
+  contentSet: string;
   versionLabel: string;
 }): string {
   const visualsRoot = getGeneratedCategoryFolder({
     projectFolder: input.projectFolder,
     category: "visuals",
+    contentSet: input.contentSet,
   });
-  const versionFolder = path.join(visualsRoot, normalizeRpaVersionLabel(input.versionLabel));
+  const versionFolder = path.join(visualsRoot, normalizeVersionFolder(input.versionLabel));
 
   if (!isInsideRoot(visualsRoot, versionFolder)) {
-    throw new Error("Target version folder must stay inside generated-content/visuals.");
+    throw new Error("Target version folder must stay inside the visual set's _generated folder.");
   }
 
   return versionFolder;
@@ -487,22 +676,22 @@ function getRpaVisualVersionFolder(input: {
 
 function getRpaSavedOutputPath(input: {
   projectFolder: string;
+  contentSet: string;
   versionLabel: string;
   outputFilename: string;
   downloadedFilename?: string;
 }): string {
-  const downloadedExt = path.extname(input.downloadedFilename || "").toLowerCase();
-  const fallbackExtension = [".png", ".jpg", ".jpeg", ".webp"].includes(downloadedExt) ? downloadedExt : ".png";
   const targetFolder = getRpaVisualVersionFolder(input);
-  const filename = safeFilename(normalizeRpaImageFilename(input.outputFilename, fallbackExtension));
+  const filename = safeFilename(`${path.parse(normalizeRpaImageFilename(input.outputFilename, ".png")).name}.png`);
   const candidate = uniqueAvailablePath(targetFolder, filename);
   const visualsRoot = getGeneratedCategoryFolder({
     projectFolder: input.projectFolder,
     category: "visuals",
+    contentSet: input.contentSet,
   });
 
   if (!isInsideRoot(visualsRoot, candidate)) {
-    throw new Error("Refusing to save outside generated-content/visuals.");
+    throw new Error("Refusing to save outside the visual set's _generated folder.");
   }
 
   return candidate;
@@ -518,9 +707,9 @@ function createRpaJob(input: ChatGptRpaStartInput): ChatGptRpaRuntimeJob {
     { id: "preflight", label: "Preflight checks", status: "queued", updatedAt: timestamp },
     { id: "browser", label: "Open ChatGPT browser", status: "queued", updatedAt: timestamp },
     { id: "login", label: "Confirm ChatGPT login", status: "queued", updatedAt: timestamp },
-    { id: "compose", label: "Attach logo and submit prompt", status: "queued", updatedAt: timestamp },
+    { id: "compose", label: "Submit body-artwork prompt", status: "queued", updatedAt: timestamp },
     { id: "download", label: "Download generated image", status: "queued", updatedAt: timestamp },
-    { id: "save", label: "Save to generated-content", status: "queued", updatedAt: timestamp },
+    { id: "save", label: "Save to content-set version", status: "queued", updatedAt: timestamp },
   ];
 
   return {
@@ -696,42 +885,6 @@ async function downloadGeneratedImageFromChatGpt(input: {
   throw new Error("Generated image is visible, but no downloadable image control was found. Open the image menu/download manually, then click Resume.");
 }
 
-async function attachLogoToChatGpt(input: {
-  page: import("playwright").Page;
-  logoPath: string;
-  config: ChatGptRpaConfig;
-}): Promise<string> {
-  const fileInput = input.page.locator("input[type='file']").first();
-
-  try {
-    if (await fileInput.count()) {
-      await fileInput.setInputFiles(input.logoPath, { timeout: 4000 });
-      return "Logo attached through existing file input.";
-    }
-  } catch {
-    // Continue through visible attach flows.
-  }
-
-  try {
-    const attachButton = await firstVisibleLocator(input.page, input.config.selectors.attachButton, input.config.timeouts.composerMs);
-    const fileChooserPromise = input.page.waitForEvent("filechooser", { timeout: input.config.timeouts.composerMs });
-    await attachButton.click();
-    const fileChooser = await fileChooserPromise;
-    await fileChooser.setFiles(input.logoPath);
-    return "Logo attached through attach button.";
-  } catch {
-    // Some ChatGPT layouts open a menu before exposing the upload item.
-  }
-
-  const attachButton = await firstVisibleLocator(input.page, input.config.selectors.attachButton, input.config.timeouts.composerMs);
-  await attachButton.click();
-  const fileChooserPromise = input.page.waitForEvent("filechooser", { timeout: input.config.timeouts.composerMs });
-  await clickFirstVisible(input.page, input.config.selectors.uploadMenuItem, input.config.timeouts.composerMs);
-  const fileChooser = await fileChooserPromise;
-  await fileChooser.setFiles(input.logoPath);
-  return "Logo attached through upload menu.";
-}
-
 async function runChatGptRpaJob(job: ChatGptRpaRuntimeJob, resumeFromWaiting = false): Promise<void> {
   if (job.running) return;
   job.running = true;
@@ -743,7 +896,7 @@ async function runChatGptRpaJob(job: ChatGptRpaRuntimeJob, resumeFromWaiting = f
     if (job.cancelled) return;
 
     setRpaJobStatus(job, "running");
-    setRpaStep(job, "preflight", "running", "Validating prompt, logo and target folder.");
+    setRpaStep(job, "preflight", "running", "Validating prompt, locked frame and target folder.");
 
     const validationErrors = validateRpaStartInput(job.input);
     if (validationErrors.length > 0) {
@@ -757,6 +910,7 @@ async function runChatGptRpaJob(job: ChatGptRpaRuntimeJob, resumeFromWaiting = f
 
     ensureDirectory(getRpaVisualVersionFolder({
       projectFolder: job.input.projectFolder,
+      contentSet: job.input.contentSet,
       versionLabel: job.input.versionLabel,
     }));
     setRpaStep(job, "preflight", "complete", "Preflight passed.");
@@ -807,20 +961,7 @@ async function runChatGptRpaJob(job: ChatGptRpaRuntimeJob, resumeFromWaiting = f
     if (job.cancelled) return;
 
     if (job.steps.find((step) => step.id === "compose")?.status !== "complete") {
-      setRpaStep(job, "compose", "running", "Attaching logo and submitting prompt.");
-
-      if (resumeFromWaiting && job.steps.find((step) => step.id === "compose")?.status === "waiting") {
-        setRpaStep(job, "compose", "running", "Continuing after manual logo attachment.");
-      } else {
-        try {
-          const attachMessage = await attachLogoToChatGpt({ page, logoPath, config });
-          setRpaStep(job, "compose", "running", attachMessage);
-        } catch (error) {
-          setRpaStep(job, "compose", "waiting", "Could not attach the logo automatically. Attach it manually in the ChatGPT browser, then click Resume to paste and submit the prompt.");
-          setRpaJobStatus(job, "waiting_for_user", error instanceof Error ? error.message : "Logo attachment needs manual intervention.");
-          return;
-        }
-      }
+      setRpaStep(job, "compose", "running", "Submitting the body-artwork prompt without attaching the logo.");
 
       await fillChatGptComposer(page, config.selectors.composer, job.input.prompt);
       await clickFirstVisible(page, config.selectors.submitButton, config.timeouts.composerMs);
@@ -833,6 +974,7 @@ async function runChatGptRpaJob(job: ChatGptRpaRuntimeJob, resumeFromWaiting = f
       const download = await downloadGeneratedImageFromChatGpt({ page, config });
       const outputPath = getRpaSavedOutputPath({
         projectFolder: job.input.projectFolder,
+        contentSet: job.input.contentSet,
         versionLabel: job.input.versionLabel,
         outputFilename: job.input.outputFilename,
         downloadedFilename: download.suggestedFilename(),
@@ -840,10 +982,22 @@ async function runChatGptRpaJob(job: ChatGptRpaRuntimeJob, resumeFromWaiting = f
       ensureDirectory(path.dirname(outputPath));
 
       setRpaStep(job, "download", "complete", `Downloaded ${download.suggestedFilename()}.`);
-      setRpaStep(job, "save", "running", "Saving downloaded image into generated-content.");
-      await download.saveAs(outputPath);
+      setRpaStep(job, "save", "running", "Saving downloaded image into the content-set version folder.");
+      const temporaryDownload = `${outputPath}.${crypto.randomUUID()}.download`;
+      try {
+        await download.saveAs(temporaryDownload);
+        const framedArtwork = await renderProductionArtwork(fs.readFileSync(temporaryDownload), {
+          outputProfileId: job.input.outputProfileId,
+          headerText: job.input.headerText,
+          footerText: job.input.footerText,
+          logoAsset: job.input.logoAsset,
+        });
+        fs.writeFileSync(outputPath, framedArtwork);
+      } finally {
+        fs.rmSync(temporaryDownload, { force: true });
+      }
 
-      const relativeFromProjectRoot = path.relative(projectRoot, outputPath).replace(/\\/g, "/");
+      const relativeFromProjectRoot = contentRelativePath(outputPath);
       job.savedFile = {
         filename: path.basename(outputPath),
         relativePath: relativeFromProjectRoot,
@@ -868,10 +1022,181 @@ async function runChatGptRpaJob(job: ChatGptRpaRuntimeJob, resumeFromWaiting = f
   }
 }
 
+function projectLabelFromMarkdown(markdown: string, fallback: string): string {
+  return markdown.match(/^#\s+(.+)$/m)?.[1]?.trim() || fallback
+    .replace(/[-_]+/g, " ")
+    .replace(/\b\w/g, (character) => character.toUpperCase());
+}
+
+function runtimeProjectFromFolder(brandId: string, projectId: string, folder: string): RuntimeProject {
+  const projectMarkdown = path.join(folder, "project.md");
+  const raw = fs.existsSync(projectMarkdown) ? fs.readFileSync(projectMarkdown, "utf8") : "";
+  const workflow = raw.match(/^Workflow:\s*(presentation|document_pack|linkedin_campaign|mixed)\s*$/mi)?.[1] as RuntimeProject["workflow"];
+  return {
+    id: projectId,
+    label: projectLabelFromMarkdown(raw, projectId),
+    brandId,
+    folder: `content/projects/${brandId}/${projectId}`,
+    workflow,
+  };
+}
+
+function listRuntimeProjectsFromDisk(): RuntimeProject[] {
+  const projectsRoot = path.join(contentRoot, "projects");
+  if (!fs.existsSync(projectsRoot)) return [];
+  const output: RuntimeProject[] = [];
+  for (const brandEntry of fs.readdirSync(projectsRoot, { withFileTypes: true })) {
+    if (!brandEntry.isDirectory() || brandEntry.isSymbolicLink()) continue;
+    const brandFolder = path.join(projectsRoot, brandEntry.name);
+    for (const projectEntry of fs.readdirSync(brandFolder, { withFileTypes: true })) {
+      if (!projectEntry.isDirectory() || projectEntry.isSymbolicLink() || projectEntry.name.startsWith(".tmp-")) continue;
+      const project = runtimeProjectFromFolder(brandEntry.name, projectEntry.name, path.join(brandFolder, projectEntry.name));
+      ensureGeneratedScaffold(project.folder);
+      output.push(project);
+    }
+  }
+  return output.sort((a, b) => a.label.localeCompare(b.label));
+}
+
+function runtimeContentFiles(project: RuntimeProject): RuntimeContentFile[] {
+  const folder = contentPathFromRelative(project.folder);
+  return walkFiles(folder)
+    .filter((filename) => filename.toLowerCase().endsWith(".md"))
+    .filter((filename) => !isIgnoredContentPath(path.relative(folder, filename)))
+    .map((filename): RuntimeContentFile | undefined => {
+      const relative = path.relative(folder, filename).replace(/\\/g, "/");
+      const parsed = parseContentSetPath(relative);
+      if (parsed?.isDescriptor) return undefined;
+      const base = path.basename(filename);
+      return {
+        path: contentRelativePath(filename),
+        type: parsed?.type || "project",
+        contentSet: parsed?.contentSet,
+        filename: base,
+        label: getGeneratedFileDisplayName(base),
+        raw: fs.readFileSync(filename, "utf8"),
+      };
+    })
+    .filter((file): file is RuntimeContentFile => Boolean(file))
+    .sort((a, b) => a.path.localeCompare(b.path));
+}
+
 function localFilePlugin(): Plugin {
   return {
     name: "prompt-builder-persist-output-name-api",
     configureServer(server) {
+      server.middlewares.use("/api/storage/status", (_req, res) => {
+        let writable = false;
+        try {
+          ensureDirectory(contentRoot);
+          fs.accessSync(contentRoot, fs.constants.R_OK | fs.constants.W_OK);
+          writable = true;
+        } catch {
+          writable = false;
+        }
+        sendJson(res, 200, { ok: true, localApiAvailable: true, contentRoot, writable, version: "1.0" });
+      });
+
+      server.middlewares.use("/api/storage/settings", async (req, res) => {
+        if (req.method !== "PUT") {
+          sendJson(res, 405, { ok: false, error: "Method not allowed" });
+          return;
+        }
+        try {
+          const body = JSON.parse(await readRequestBody(req)) as { contentRoot?: string; initialize?: boolean };
+          if (!body.contentRoot || !path.isAbsolute(body.contentRoot)) {
+            sendJson(res, 400, { ok: false, error: "Content root must be an absolute filesystem path." });
+            return;
+          }
+          const nextRoot = path.resolve(body.contentRoot);
+          if (body.initialize) initializeContentRoot(nextRoot);
+          if (!fs.existsSync(nextRoot) || !fs.statSync(nextRoot).isDirectory()) {
+            sendJson(res, 400, { ok: false, error: "Content root does not exist. Enable initialization to create it." });
+            return;
+          }
+          fs.accessSync(nextRoot, fs.constants.R_OK | fs.constants.W_OK);
+          contentRoot = nextRoot;
+          saveAppSettings();
+          sendJson(res, 200, { ok: true, localApiAvailable: true, contentRoot, writable: true, version: "1.0" });
+        } catch (error) {
+          sendJson(res, 400, { ok: false, error: error instanceof Error ? error.message : "Could not update content root." });
+        }
+      });
+
+      server.middlewares.use("/api/projects/preview", async (req, res) => {
+        if (req.method !== "POST") {
+          sendJson(res, 405, { ok: false, error: "Method not allowed" });
+          return;
+        }
+        try {
+          const input = JSON.parse(await readRequestBody(req)) as CreateProjectInput;
+          sendJson(res, 200, buildProjectScaffold(input));
+        } catch (error) {
+          sendJson(res, 400, { ok: false, error: error instanceof Error ? error.message : "Could not preview project." });
+        }
+      });
+
+      server.middlewares.use("/api/projects", async (req, res) => {
+        const requestPath = decodeURIComponent(req.url || "/").split("?")[0];
+        const parts = requestPath.replace(/^\/+/, "").split("/").filter(Boolean);
+        if (req.method === "GET" && parts.length === 0) {
+          sendJson(res, 200, { ok: true, projects: listRuntimeProjectsFromDisk() });
+          return;
+        }
+        if (req.method === "GET" && parts.length === 2) {
+          const project = listRuntimeProjectsFromDisk().find((item) => item.brandId === parts[0] && item.id === parts[1]);
+          if (!project) {
+            sendJson(res, 404, { ok: false, error: "Project not found." });
+            return;
+          }
+          sendJson(res, 200, { ok: true, project, files: runtimeContentFiles(project) });
+          return;
+        }
+        if (req.method !== "POST" || parts.length > 0) {
+          sendJson(res, 405, { ok: false, error: "Method not allowed" });
+          return;
+        }
+        let stageFolder = "";
+        try {
+          const input = JSON.parse(await readRequestBody(req)) as CreateProjectInput;
+          const validationErrors = validateCreateProjectInput(input);
+          if (validationErrors.length) {
+            sendJson(res, 400, { ok: false, error: validationErrors.join(" ") });
+            return;
+          }
+          const brandFolder = path.join(contentRoot, "brands", input.brandId);
+          if (!fs.existsSync(brandFolder) || !fs.statSync(brandFolder).isDirectory() || fs.lstatSync(brandFolder).isSymbolicLink()) {
+            sendJson(res, 400, { ok: false, error: `Brand ${input.brandId} is not available in the configured content root.` });
+            return;
+          }
+          const parentFolder = path.join(contentRoot, "projects", input.brandId);
+          ensureDirectory(parentFolder);
+          const collision = fs.readdirSync(parentFolder).some((name) => name.toLowerCase() === input.projectSlug.toLowerCase());
+          if (collision) {
+            sendJson(res, 409, { ok: false, error: `Project ${input.projectSlug} already exists for this brand.` });
+            return;
+          }
+          const targetFolder = path.join(parentFolder, input.projectSlug);
+          stageFolder = path.join(parentFolder, `.tmp-${input.projectSlug}-${crypto.randomUUID()}`);
+          ensureDirectory(stageFolder);
+          const preview = buildProjectScaffold(input);
+          for (const file of selectedScaffoldFiles(input)) {
+            const targetFile = path.resolve(stageFolder, file.path);
+            if (!isInsideRoot(stageFolder, targetFile)) throw new Error(`Invalid scaffold path: ${file.path}`);
+            ensureDirectory(path.dirname(targetFile));
+            fs.writeFileSync(targetFile, file.content, "utf8");
+          }
+          for (const folder of preview.generatedFolders) ensureDirectory(path.join(stageFolder, folder));
+          fs.renameSync(stageFolder, targetFolder);
+          stageFolder = "";
+          const project = runtimeProjectFromFolder(input.brandId, input.projectSlug, targetFolder);
+          sendJson(res, 201, { ok: true, project, files: runtimeContentFiles(project), preview });
+        } catch (error) {
+          if (stageFolder && fs.existsSync(stageFolder)) fs.rmSync(stageFolder, { recursive: true, force: true });
+          sendJson(res, 500, { ok: false, error: error instanceof Error ? error.message : "Could not create project." });
+        }
+      });
+
       server.middlewares.use("/api/content/save", async (req, res) => {
         if (req.method !== "POST") {
           sendJson(res, 405, { ok: false, error: "Method not allowed" });
@@ -890,7 +1215,7 @@ function localFilePlugin(): Plugin {
           }
 
           const normalizedRelativePath = body.path.replace(/\\/g, "/");
-          const absolutePath = path.resolve(projectRoot, normalizedRelativePath);
+          const absolutePath = contentPathFromRelative(normalizedRelativePath);
 
           if (!isInsideRoot(contentRoot, absolutePath)) {
             sendJson(res, 400, { ok: false, error: "Refusing to save outside content." });
@@ -902,7 +1227,7 @@ function localFilePlugin(): Plugin {
             return;
           }
 
-          if (absolutePath.includes(`${path.sep}generated-content${path.sep}`)) {
+          if (absolutePath.includes(`${path.sep}generated-content${path.sep}`) || absolutePath.includes(`${path.sep}_generated${path.sep}`)) {
             sendJson(res, 400, {
               ok: false,
               error: "Generated-content files are managed through the output panel.",
@@ -1008,11 +1333,97 @@ function localFilePlugin(): Plugin {
         sendJson(res, 405, { ok: false, error: "Method not allowed" });
       });
 
+      server.middlewares.use("/api/distribution", async (req, res) => {
+        const url = new URL(req.url || "/", "http://localhost");
+        const requestPath = decodeURIComponent(url.pathname).split("?")[0];
+        const recordId = requestPath.replace(/^\/+/, "");
+        try {
+          migrateLegacyDistributionStore();
+          const projectFolder = getStringQueryParam(url, "projectFolder");
+          if (!projectFolder) {
+            sendJson(res, 400, { ok: false, error: "projectFolder is required." });
+            return;
+          }
+          const store = readDistributionStore(projectFolder);
+
+          if (req.method === "GET" && !recordId) {
+            sendJson(res, 200, { ok: true, records: store.records });
+            return;
+          }
+
+          if (req.method === "POST" && !recordId) {
+            let draft = JSON.parse(await readRequestBody(req, maxExportBodyBytes)) as DistributionDraft;
+            const today = new Date().toLocaleDateString("en-CA");
+            draft = withDefaultDistributionDate(draft, today);
+            if (draft.projectFolder !== projectFolder) {
+              sendJson(res, 400, { ok: false, error: "Distribution project does not match projectFolder." });
+              return;
+            }
+            const errors = [...validateDistributionDraft(draft), ...distributionReferenceErrors({
+              projectFolder: draft.projectFolder || "",
+              contentSourcePath: draft.contentSourcePath,
+              generatedContentIds: Array.isArray(draft.generatedContentIds) ? draft.generatedContentIds : [],
+            })];
+            if (errors.length) {
+              sendJson(res, 400, { ok: false, error: errors.join(" ") });
+              return;
+            }
+            const records = createDistributionRecordsFromDraft(draft, () => crypto.randomUUID(), new Date().toISOString());
+            store.records.push(...records);
+            writeDistributionStore(projectFolder, store);
+            sendJson(res, 201, { ok: true, records });
+            return;
+          }
+
+          const existingIndex = store.records.findIndex((record) => record.id === recordId);
+          if (!recordId || existingIndex < 0) {
+            sendJson(res, 404, { ok: false, error: "Distribution record not found." });
+            return;
+          }
+
+          if (req.method === "PUT") {
+            const candidate = JSON.parse(await readRequestBody(req, maxExportBodyBytes)) as DistributionRecord;
+            const existing = store.records[existingIndex];
+            const record: DistributionRecord = {
+              ...candidate,
+              id: existing.id,
+              createdAt: existing.createdAt,
+              updatedAt: new Date().toISOString(),
+              generatedContentIds: Array.from(new Set(candidate.generatedContentIds || [])),
+            };
+            const errors = [...validateDistributionRecord(record), ...distributionReferenceErrors(record)];
+            if (errors.length) {
+              sendJson(res, 400, { ok: false, error: errors.join(" ") });
+              return;
+            }
+            store.records[existingIndex] = record;
+            writeDistributionStore(projectFolder, store);
+            sendJson(res, 200, { ok: true, record });
+            return;
+          }
+
+          if (req.method === "DELETE") {
+            store.records.splice(existingIndex, 1);
+            writeDistributionStore(projectFolder, store);
+            sendJson(res, 200, { ok: true });
+            return;
+          }
+
+          sendJson(res, 405, { ok: false, error: "Method not allowed" });
+        } catch (error) {
+          sendJson(res, 500, {
+            ok: false,
+            error: error instanceof Error ? error.message : "Unknown distribution error.",
+          });
+        }
+      });
+
       server.middlewares.use("/api/generated-content/folder", (req, res) => {
         try {
           const url = new URL(req.url || "", "http://localhost");
           const projectFolder = getStringQueryParam(url, "projectFolder");
-          const category = getStringQueryParam(url, "category") || "other";
+          const category = getStringQueryParam(url, "category") || "documents";
+          const contentSet = getStringQueryParam(url, "contentSet");
 
           if (!projectFolder) {
             sendJson(res, 400, { ok: false, error: "projectFolder is required." });
@@ -1020,12 +1431,12 @@ function localFilePlugin(): Plugin {
           }
 
           ensureGeneratedScaffold(projectFolder);
-          const folder = getGeneratedCategoryFolder({ projectFolder, category });
+          const folder = getGeneratedCategoryFolder({ projectFolder, category, contentSet });
 
           sendJson(res, 200, {
             ok: true,
-            folder: path.relative(projectRoot, folder).replace(/\\/g, "/"),
-            generatedContentRoot: path.relative(projectRoot, getGeneratedContentRoot(projectFolder)).replace(/\\/g, "/"),
+            folder: contentRelativePath(folder),
+            generatedContentRoot: contentRelativePath(folder),
           });
         } catch (error) {
           sendJson(res, 500, {
@@ -1040,6 +1451,7 @@ function localFilePlugin(): Plugin {
           const url = new URL(req.url || "", "http://localhost");
           const projectFolder = getStringQueryParam(url, "projectFolder");
           const category = getStringQueryParam(url, "category") || "all";
+          const contentSet = getStringQueryParam(url, "contentSet");
 
           if (!projectFolder) {
             sendJson(res, 400, { ok: false, error: "projectFolder is required." });
@@ -1048,16 +1460,16 @@ function localFilePlugin(): Plugin {
 
           ensureGeneratedScaffold(projectFolder);
 
-          const generatedRoot = getGeneratedContentRoot(projectFolder);
+          const projectRoot = getProjectFolderAbsolute(projectFolder);
           const listRoot = category !== "all"
-            ? getGeneratedCategoryFolder({ projectFolder, category })
-            : generatedRoot;
-
-          ensureDirectory(listRoot);
-
-          const files = walkFiles(listRoot).map((absolutePath) => {
-            const relativeFromGeneratedRoot = path.relative(generatedRoot, absolutePath).replace(/\\/g, "/");
-            const relativeFromProjectRoot = path.relative(projectRoot, absolutePath).replace(/\\/g, "/");
+            ? path.join(projectRoot, normalizeGeneratedCategory(category))
+            : projectRoot;
+          const files = walkFiles(listRoot)
+            .filter((absolutePath) => absolutePath.includes(`${path.sep}_generated${path.sep}`))
+            .filter((absolutePath) => !contentSet || absolutePath.includes(`${path.sep}${contentSet}${path.sep}`))
+            .map((absolutePath) => {
+            const relativeFromGeneratedRoot = path.relative(projectRoot, absolutePath).replace(/\\/g, "/");
+            const relativeFromProjectRoot = contentRelativePath(absolutePath);
             const parts = relativeFromGeneratedRoot.split("/");
             const stat = fs.statSync(absolutePath);
 
@@ -1067,7 +1479,8 @@ function localFilePlugin(): Plugin {
               displayName: getGeneratedFileDisplayName(path.basename(absolutePath)),
               relativePath: relativeFromProjectRoot,
               generatedRelativePath: relativeFromGeneratedRoot,
-              category: parts[0] || "other",
+              category: parts[0] || "documents",
+              contentSet: parts[1] || "",
               versionLabel: getGeneratedFileVersionLabel(relativeFromGeneratedRoot),
               fileUrl: `/project-generated-content/${relativeFromProjectRoot}`,
               fileType: getFileType(absolutePath),
@@ -1079,7 +1492,7 @@ function localFilePlugin(): Plugin {
           sendJson(res, 200, {
             ok: true,
             projectFolder: normalizeProjectFolder(projectFolder),
-            generatedContentRoot: path.relative(projectRoot, generatedRoot).replace(/\\/g, "/"),
+            generatedContentRoot: contentRelativePath(projectRoot),
             files: files.sort((a, b) => b.modifiedAt.localeCompare(a.modifiedAt)),
           });
         } catch (error) {
@@ -1102,6 +1515,9 @@ function localFilePlugin(): Plugin {
             fileIds?: string[];
             format?: "pptx" | "pdf";
             outputFilename?: string;
+            category?: string;
+            contentSet?: string;
+            versionLabel?: string;
           };
 
           if (!body.projectFolder || !Array.isArray(body.fileIds) || !body.fileIds.length || !body.format) {
@@ -1119,16 +1535,17 @@ function localFilePlugin(): Plugin {
 
           ensureGeneratedScaffold(body.projectFolder);
 
-          const generatedRoot = getGeneratedContentRoot(body.projectFolder);
+          const projectRoot = getProjectFolderAbsolute(body.projectFolder);
           const selectedFiles = body.fileIds.map((fileId) => {
-            const absolutePath = path.resolve(projectRoot, fileId.replace(/\\/g, "/"));
+            const absolutePath = contentPathFromRelative(fileId);
 
             if (
               !fs.existsSync(absolutePath) ||
-              !isInsideRoot(generatedRoot, absolutePath) ||
+              !isInsideRoot(projectRoot, absolutePath) ||
+              !absolutePath.includes(`${path.sep}_generated${path.sep}`) ||
               !fs.statSync(absolutePath).isFile()
             ) {
-              throw new Error(`Selected file is not inside generated-content: ${fileId}`);
+              throw new Error(`Selected file is not inside a content-set _generated folder: ${fileId}`);
             }
 
             return absolutePath;
@@ -1143,13 +1560,17 @@ function localFilePlugin(): Plugin {
             return;
           }
 
-          const finalRendersFolder = getGeneratedCategoryFolder({
+          const generatedFolder = getGeneratedCategoryFolder({
             projectFolder: body.projectFolder,
-            category: "final-renders",
+            category: body.category || "visuals",
+            contentSet: body.contentSet,
           });
+          const selectedVersion = path.basename(path.dirname(selectedFiles[0]));
+          const versionLabel = normalizeVersionFolder(body.versionLabel || (/^v\d{3,}$/i.test(selectedVersion) ? selectedVersion : getNextVersionFolderOnDisk(generatedFolder)));
+          const finalRendersFolder = path.join(generatedFolder, versionLabel);
           ensureDirectory(finalRendersFolder);
 
-          const baseName = body.outputFilename?.trim() || "selected-generated-visuals";
+          const baseName = body.outputFilename?.trim() || `${body.contentSet || "visual-set"}-${versionLabel}`;
           const cleanOutputFilename = safeFilename(`${stripDuplicateExtensions(baseName).replace(/\.[a-z0-9]+$/i, "")}.${body.format}`);
           const outputPath = uniqueAvailablePath(finalRendersFolder, cleanOutputFilename);
 
@@ -1211,7 +1632,7 @@ function localFilePlugin(): Plugin {
             fs.writeFileSync(outputPath, await pdf.save());
           }
 
-          const relativeFromProjectRoot = path.relative(projectRoot, outputPath).replace(/\\/g, "/");
+          const relativeFromProjectRoot = contentRelativePath(outputPath);
 
           sendJson(res, 200, {
             ok: true,
@@ -1271,32 +1692,31 @@ function localFilePlugin(): Plugin {
 
           const targetFolder = getAssistVisualVersionFolder({
             projectFolder: body.projectFolder,
+            contentSet: body.contentSet,
             versionLabel: body.versionLabel,
           });
           ensureDirectory(targetFolder);
 
-          const downloadedExt = path.extname(latestDownload.filename).toLowerCase();
-          const fallbackExtension = [".png", ".jpg", ".jpeg", ".webp"].includes(downloadedExt)
-            ? downloadedExt
-            : ".png";
-          const cleanFilename = safeFilename(normalizeAssistImageFilename(body.outputFilename, fallbackExtension));
+          const cleanFilename = safeFilename(`${path.parse(normalizeAssistImageFilename(body.outputFilename, ".png")).name}.png`);
           const absolutePath = uniqueAvailablePath(targetFolder, cleanFilename);
           const visualsRoot = getGeneratedCategoryFolder({
             projectFolder: body.projectFolder,
             category: "visuals",
+            contentSet: body.contentSet,
           });
 
           if (!isInsideRoot(visualsRoot, absolutePath)) {
             sendJson(res, 400, {
               ok: false,
-              error: "Refusing to write outside generated-content/visuals.",
+              error: "Refusing to write outside the visual set's _generated folder.",
             });
             return;
           }
 
-          fs.copyFileSync(latestDownload.path, absolutePath);
+          const framedArtwork = await renderProductionArtwork(fs.readFileSync(latestDownload.path), body.masterFrame);
+          fs.writeFileSync(absolutePath, framedArtwork);
 
-          const relativeFromProjectRoot = path.relative(projectRoot, absolutePath).replace(/\\/g, "/");
+          const relativeFromProjectRoot = contentRelativePath(absolutePath);
 
           sendJson(res, 200, {
             ok: true,
@@ -1314,6 +1734,66 @@ function localFilePlugin(): Plugin {
         }
       });
 
+      server.middlewares.use("/api/generated-content/render-document", async (req, res) => {
+        if (req.method !== "POST") {
+          sendJson(res, 405, { ok: false, error: "Method not allowed" });
+          return;
+        }
+        try {
+          const body = JSON.parse(await readRequestBody(req, maxExportBodyBytes)) as {
+            projectFolder?: string;
+            outputProfileId?: "a4_document_portrait" | "a4_pdf_portrait";
+            outputFilename?: string;
+            title?: string;
+            markdown?: string;
+            headerText?: string;
+            footerText?: string;
+            logoAsset?: string;
+            contentSet?: string;
+            versionLabel?: string;
+          };
+          if (!body.projectFolder || !body.contentSet || !body.outputProfileId || !body.markdown?.trim() || !body.logoAsset) {
+            sendJson(res, 400, { ok: false, error: "Expected projectFolder, contentSet, outputProfileId, markdown and logoAsset." });
+            return;
+          }
+          if (!getMasterFrameSpec(body.outputProfileId)) {
+            sendJson(res, 400, { ok: false, error: "A fixed A4 master frame is required." });
+            return;
+          }
+          ensureGeneratedScaffold(body.projectFolder);
+          const generatedFolder = getGeneratedCategoryFolder({ projectFolder: body.projectFolder, category: "documents", contentSet: body.contentSet });
+          const versionFolder = path.join(generatedFolder, body.versionLabel
+            ? normalizeVersionFolder(body.versionLabel)
+            : getNextVersionFolderOnDisk(generatedFolder));
+          ensureDirectory(versionFolder);
+          const format = body.outputProfileId === "a4_pdf_portrait" ? "pdf" : "docx";
+          const baseName = path.parse(body.outputFilename?.trim() || body.title?.trim() || "rendered-document").name;
+          const outputPath = uniqueAvailablePath(versionFolder, safeFilename(`${baseName}.${format}`));
+          if (!isInsideRoot(generatedFolder, outputPath)) {
+            throw new Error("Refusing to write outside the document pack's _generated folder.");
+          }
+          const bytes = await renderLockedDocument({
+            format,
+            markdown: body.markdown,
+            title: body.title?.trim() || baseName,
+            headerText: body.headerText?.trim() || "",
+            footerText: body.footerText?.trim() || "",
+            logoPath: getPathInsideProject(body.logoAsset, "Logo asset"),
+          });
+          fs.writeFileSync(outputPath, bytes);
+          const relativePath = contentRelativePath(outputPath);
+          sendJson(res, 200, {
+            ok: true,
+            filename: path.basename(outputPath),
+            relativePath,
+            fileUrl: `/project-generated-content/${relativePath}`,
+            savedAt: new Date().toISOString(),
+          });
+        } catch (error) {
+          sendJson(res, 500, { ok: false, error: error instanceof Error ? error.message : "Document rendering failed." });
+        }
+      });
+
       server.middlewares.use("/api/generated-content/upload", async (req, res) => {
         if (req.method !== "POST") {
           sendJson(res, 405, { ok: false, error: "Method not allowed" });
@@ -1327,14 +1807,20 @@ function localFilePlugin(): Plugin {
             filename?: string;
             targetFilename?: string;
             versionLabel?: string;
+            contentSet?: string;
+            masterFrame?: MasterFrameMetadata;
             dataBase64?: string;
           };
 
-          if (!body.projectFolder || !body.category || !body.filename || !body.dataBase64) {
+          if (!body.projectFolder || !body.category || !body.contentSet || !body.filename || !body.dataBase64) {
             sendJson(res, 400, {
               ok: false,
-              error: "Expected projectFolder, category, filename and dataBase64.",
+              error: "Expected projectFolder, category, contentSet, filename and dataBase64.",
             });
+            return;
+          }
+          if (body.category === "visuals" && !body.masterFrame) {
+            sendJson(res, 400, { ok: false, error: "Visual uploads require locked master-frame metadata." });
             return;
           }
 
@@ -1343,15 +1829,16 @@ function localFilePlugin(): Plugin {
           const categoryFolder = getGeneratedCategoryFolder({
             projectFolder: body.projectFolder,
             category: body.category,
+            contentSet: body.contentSet,
           });
-          const outputFolder = body.category === "visuals" && body.versionLabel
-            ? path.join(categoryFolder, normalizeAssistVersionLabel(body.versionLabel))
-            : categoryFolder;
+          const outputFolder = path.join(categoryFolder, body.versionLabel
+            ? normalizeVersionFolder(body.versionLabel)
+            : getNextVersionFolderOnDisk(categoryFolder));
 
           if (!isInsideRoot(categoryFolder, outputFolder)) {
             sendJson(res, 400, {
               ok: false,
-              error: "Target upload folder must stay inside generated-content.",
+              error: "Target upload folder must stay inside the content set's _generated folder.",
             });
             return;
           }
@@ -1365,7 +1852,8 @@ function localFilePlugin(): Plugin {
           const withExtension = path.extname(candidateName)
             ? candidateName
             : `${candidateName}${originalExt || ".bin"}`;
-          const cleanFilename = safeFilename(withExtension);
+          const shouldRenderArtwork = body.category === "visuals" && Boolean(body.masterFrame);
+          const cleanFilename = safeFilename(shouldRenderArtwork ? `${path.parse(withExtension).name}.png` : withExtension);
           const decodedBytes = Buffer.from(body.dataBase64, "base64");
 
           if (decodedBytes.byteLength > maxUploadBytes) {
@@ -1377,19 +1865,20 @@ function localFilePlugin(): Plugin {
           }
 
           const absolutePath = uniqueAvailablePath(outputFolder, cleanFilename);
-          const generatedRoot = getGeneratedContentRoot(body.projectFolder);
-
-          if (!isInsideRoot(generatedRoot, absolutePath)) {
+          if (!isInsideRoot(categoryFolder, absolutePath)) {
             sendJson(res, 400, {
               ok: false,
-              error: "Refusing to write outside generated-content.",
+              error: "Refusing to write outside the content set's _generated folder.",
             });
             return;
           }
 
-          fs.writeFileSync(absolutePath, decodedBytes);
+          const outputBytes = shouldRenderArtwork
+            ? await renderProductionArtwork(decodedBytes, body.masterFrame!)
+            : decodedBytes;
+          fs.writeFileSync(absolutePath, outputBytes);
 
-          const relativeFromProjectRoot = path.relative(projectRoot, absolutePath).replace(/\\/g, "/");
+          const relativeFromProjectRoot = contentRelativePath(absolutePath);
 
           sendJson(res, 200, {
             ok: true,
@@ -1409,12 +1898,12 @@ function localFilePlugin(): Plugin {
       server.middlewares.use("/project-generated-content", (req, res) => {
         try {
           const requestPath = decodeURIComponent(req.url || "/").split("?")[0];
-          const requestedFile = path.resolve(projectRoot, requestPath.replace(/^\/+/, ""));
+          const requestedFile = contentPathFromRelative(requestPath);
 
           if (
             !fs.existsSync(requestedFile) ||
             !isInsideRoot(contentRoot, requestedFile) ||
-            !requestedFile.includes(`${path.sep}generated-content${path.sep}`)
+            !requestedFile.includes(`${path.sep}_generated${path.sep}`)
           ) {
             res.statusCode = 404;
             res.end("File not found");
@@ -1453,7 +1942,9 @@ function localFilePlugin(): Plugin {
 export default defineConfig({
   plugins: [react(), localFilePlugin()],
   server: {
+    host: "0.0.0.0",
     port: 5177,
+    strictPort: true,
     watch: {
       ignored: [
         "**/.local/**",

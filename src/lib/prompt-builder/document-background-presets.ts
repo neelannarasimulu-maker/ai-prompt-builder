@@ -6,16 +6,16 @@ export type DocumentBackgroundPreset = {
 
 export const documentBackgroundPresets: DocumentBackgroundPreset[] = [
   {
+    id: "auto_brand_document",
+    label: "Auto brand document style",
+    prompt:
+      "Use an A4 portrait document layout determined by the selected brand and project document rules, including page style, header, footer, logo treatment, typography, section colours and table formatting. Do not borrow another brand's style. Keep the document print-ready, readable and faithful to the source.",
+  },
+  {
     id: "clean_white_form",
     label: "Clean White Form",
     prompt:
       "Use a clean A4 portrait document canvas with white page background, generous margins, readable typography, repeated header, repeated footer, dynamic page numbers, and formatted tables with subtle shading. Prioritise print readability over decorative effects.",
-  },
-  {
-    id: "bma_open_clean_document",
-    label: "BMA/Open Clean Document",
-    prompt:
-      "Use a clean BMA/Open A4 document layout with navy section headings, teal subsection accents, soft mist table label cells, dark navy table header rows, repeated brand header/footer and dynamic page numbers. Keep the document print-ready and professional.",
   },
   {
     id: "clean_a4_word",

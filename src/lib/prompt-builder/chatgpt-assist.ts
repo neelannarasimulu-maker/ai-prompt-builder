@@ -4,12 +4,15 @@ import {
   normalizeRpaVersionLabel,
 } from "./chatgpt-rpa";
 import type { GeneratedContentFile } from "./project-generated-content-api";
+import type { MasterFrameMetadata } from "./project-generated-content-api";
 
 export type ChatGptAssistImportInput = {
   projectFolder: string;
+  contentSet: string;
   outputFilename: string;
   versionLabel: string;
   runStartedAt: string;
+  masterFrame: MasterFrameMetadata;
 };
 
 export type ChatGptAssistImportResponse = {
@@ -65,9 +68,12 @@ export function filterLatestAssistDownload(
 export function validateAssistImportInput(input: Partial<ChatGptAssistImportInput>): string[] {
   const errors: string[] = [];
   if (!input.projectFolder?.trim()) errors.push("Project folder is required.");
+  if (!input.contentSet?.trim()) errors.push("Content set is required.");
   if (!input.outputFilename?.trim()) errors.push("Output filename is required.");
   if (!input.versionLabel?.trim()) errors.push("Target version folder is required.");
   if (!input.runStartedAt?.trim()) errors.push("Run start time is required.");
+  if (!input.masterFrame?.outputProfileId?.trim()) errors.push("Output profile is required for production framing.");
+  if (!input.masterFrame?.logoAsset?.trim()) errors.push("Resolved logo asset is required for production framing.");
   if (input.runStartedAt && Number.isNaN(new Date(input.runStartedAt).getTime())) {
     errors.push("Run start time is invalid.");
   }
@@ -77,7 +83,7 @@ export function validateAssistImportInput(input: Partial<ChatGptAssistImportInpu
 export async function importLatestChatGptDownload(
   input: ChatGptAssistImportInput
 ): Promise<ChatGptAssistImportResponse> {
-  const response = await fetch("/api/chatgpt-assist/import-latest-download", {
+  const response = await mainAppFetch("/api/chatgpt-assist/import-latest-download", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(input),
@@ -85,3 +91,4 @@ export async function importLatestChatGptDownload(
 
   return response.json() as Promise<ChatGptAssistImportResponse>;
 }
+import { mainAppFetch } from "./main-app-api";

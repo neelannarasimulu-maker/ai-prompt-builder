@@ -1,3 +1,5 @@
+# SupplySync360
+
 SupplySync360: premium executive operational technology for supply chain visibility, supplier coordination, inventory control and AI-assisted execution.
 
 Palette: teal #008B8B, deep teal #006C70, signal yellow #FFD700, charcoal #2F4F4F, graphite #1F2F2F, mist #F4FAFA, white #FFFFFF, soft grey #E8F1F1.

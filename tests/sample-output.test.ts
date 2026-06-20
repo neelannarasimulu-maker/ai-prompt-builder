@@ -6,7 +6,7 @@ describe("sample compiled prompts", () => {
     const samples = [
       compilePrompt({ brandId: "supplysync360", projectId: "executive-overview", contentId: "ss360-slide-01", outputProfileId: "landscape_image_16_9" }),
       compilePrompt({ brandId: "supplysync360", projectId: "executive-overview", contentId: "ss360-doc-02", outputProfileId: "a4_pdf_portrait" }),
-      compilePrompt({ brandId: "supplysync360", projectId: "executive-overview", contentId: "ss360-linkedin-01", outputProfileId: "linkedin_post_text" }),
+      compilePrompt({ brandId: "supplysync360", projectId: "executive-overview", contentId: "ss360-linkedin-01", outputProfileId: "linkedin_asset_4_5" }),
     ];
 
     for (const sample of samples) {

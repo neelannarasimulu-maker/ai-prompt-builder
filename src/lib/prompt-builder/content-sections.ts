@@ -15,7 +15,10 @@ export const sectionOrder = [
   "Logo Asset",
   "Logo",
   "Visible Text",
+  "LinkedIn Post Text",
   "Image Brief",
+  "Cover Page Content",
+  "Table of Contents",
   "Document Output Rules",
   "Body Content",
   "Post Brief",
@@ -35,6 +38,7 @@ const ROOT_SECTION_ALIASES = [
 ];
 
 const ROOT_SECTION_KEYS = new Set(ROOT_SECTION_ALIASES.map(normalizeSectionKey));
+const LEGACY_OUTPUT_RULE_KEYS = new Set(["Document Output Rules", "Output Rules"].map(normalizeSectionKey));
 
 const HEADING_LINE_RE = /^##\s+(.+)\s*$/;
 
@@ -121,6 +125,32 @@ export function parseMarkdownSectionList(markdown: string): ParsedSection[] {
       body: cleaned.slice(start, end).trim(),
     };
   });
+}
+
+export function detectedMarkdownSectionHeadings(markdown: string): string[] {
+  return parseMarkdownSectionList(markdown).map((section) => section.heading);
+}
+
+export function ignoredLegacyOutputRuleSections(markdown: string): string[] {
+  return parseMarkdownSectionList(markdown)
+    .filter((section) => LEGACY_OUTPUT_RULE_KEYS.has(section.key))
+    .map((section) => section.heading);
+}
+
+export function omitLegacyOutputRuleSections(markdown: string): string {
+  const sections = parseMarkdownSectionList(markdown);
+  if (sections.length === 0) return markdown;
+
+  const frontmatterMatch = (markdown || "").trimStart().startsWith("---")
+    ? (markdown || "").match(/^---[\s\S]*?\n---\s*/)?.[0] || ""
+    : "";
+  const filtered = sections
+    .filter((section) => !LEGACY_OUTPUT_RULE_KEYS.has(section.key))
+    .map((section) => `## ${section.heading}\n${compactBlock(section.body)}`)
+    .join("\n\n")
+    .trim();
+
+  return [frontmatterMatch.trim(), filtered].filter(Boolean).join("\n\n").trim();
 }
 
 export function parseMarkdownSections(markdown: string): ParsedSections {

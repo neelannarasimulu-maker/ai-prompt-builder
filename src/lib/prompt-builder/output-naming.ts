@@ -23,6 +23,14 @@ function slugify(value: string): string {
     .slice(0, 96);
 }
 
+export function slugifyOutputPart(value?: string): string {
+  return (value || "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 96);
+}
+
 export function getBaseNameFromPath(pathOrFilename?: string): string {
   if (!pathOrFilename) return "generated-output";
   const normalized = pathOrFilename.replace(/\\/g, "/");
@@ -45,6 +53,21 @@ export function getSuggestedOutputFilename(input: OutputNamingInput): string {
   const base = getBaseNameFromPath(input.contentPath || input.contentFilename);
   const ext = getExtensionForOutput(input);
   return `${base}.${ext}`;
+}
+
+export function getDeliveryPackFilenameBase(input: {
+  brandLabel?: string;
+  projectLabel?: string;
+  versionLabel?: string;
+  fallback?: string;
+}): string {
+  const parts = [
+    slugifyOutputPart(input.brandLabel),
+    slugifyOutputPart(input.projectLabel),
+    slugifyOutputPart(input.versionLabel || "generated-visuals"),
+  ].filter(Boolean);
+
+  return parts.join("-") || slugifyOutputPart(input.fallback || "delivery-pack");
 }
 
 export function replaceExtension(filename: string, extension: string): string {

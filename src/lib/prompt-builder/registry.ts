@@ -30,6 +30,7 @@ export type ContentRegistryItem = {
   projectId: string;
   kind: "slides" | "documents" | "linkedin" | "content";
   type: string;
+  contentSet: string;
   path: string;
   file: string;
 };
@@ -166,7 +167,7 @@ function discoverProjects(): ProjectRegistryItem[] {
 
   for (const [rawPath, rawMarkdown] of Object.entries(projectMarkdownModules)) {
     const path = normalizePath(rawPath);
-    if (path.includes("/generated-content/")) continue;
+    if (isIgnoredContentPath(path)) continue;
 
     const match = path.match(/^content\/projects\/([^/]+)\/([^/]+)\//);
     if (!match) continue;
@@ -197,13 +198,15 @@ function discoverContentItems(): ContentRegistryItem[] {
 
   for (const rawPath of Object.keys(projectMarkdownModules)) {
     const path = normalizePath(rawPath);
-    if (path.includes("/generated-content/")) continue;
+    if (isIgnoredContentPath(path)) continue;
     if (path.endsWith("/project.md") || path.endsWith("/visual-rules.md")) continue;
 
-    const match = path.match(/^content\/projects\/([^/]+)\/([^/]+)\/([^/]+)\/([^/]+\.md)$/);
-    if (!match) continue;
+    const projectMatch = path.match(/^content\/projects\/([^/]+)\/([^/]+)\//);
+    const parsed = parseContentSetPath(path);
+    if (!projectMatch || !parsed || parsed.isDescriptor) continue;
 
-    const [, brandId, projectId, type, file] = match;
+    const [, brandId, projectId] = projectMatch;
+    const { type, contentSet, filename: file } = parsed;
     const kind = contentKindFromFolder(type);
     const ordinal = file.match(/^(\d+)/)?.[1] || String(items.length + 1).padStart(2, "0");
 
@@ -214,6 +217,7 @@ function discoverContentItems(): ContentRegistryItem[] {
       projectId,
       kind,
       type,
+      contentSet,
       path,
       file,
     });
@@ -258,3 +262,4 @@ export function listBrands(): BrandRegistryItem[] {
 export function listProjects(brandId?: string): ProjectRegistryItem[] {
   return brandId ? getProjectsForBrand(brandId) : projects;
 }
+import { isIgnoredContentPath, parseContentSetPath } from "./content-set-paths";

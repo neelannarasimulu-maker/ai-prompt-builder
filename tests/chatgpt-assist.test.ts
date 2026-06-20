@@ -14,11 +14,12 @@ function visualFile(input: Partial<GeneratedContentFile>): GeneratedContentFile 
     id: input.id || "v1",
     filename: input.filename || "01-demo.png",
     displayName: input.displayName || "01 demo",
-    relativePath: input.relativePath || "content/projects/demo/generated-content/visuals/Version 1.0/01-demo.png",
-    generatedRelativePath: input.generatedRelativePath || "visuals/Version 1.0/01-demo.png",
+    relativePath: input.relativePath || "content/projects/demo/visuals/default-visual-set/_generated/v001/01-demo.png",
+    generatedRelativePath: input.generatedRelativePath || "visuals/default-visual-set/_generated/v001/01-demo.png",
     category: input.category || "visuals",
+    contentSet: input.contentSet || "default-visual-set",
     versionLabel: input.versionLabel,
-    fileUrl: input.fileUrl || "/project-generated-content/content/projects/demo/generated-content/visuals/Version 1.0/01-demo.png",
+    fileUrl: input.fileUrl || "/project-generated-content/content/projects/demo/visuals/default-visual-set/_generated/v001/01-demo.png",
     fileType: input.fileType || "image",
     sizeBytes: input.sizeBytes || 1024,
     modifiedAt: input.modifiedAt || "2026-06-12T00:00:00.000Z",
@@ -34,30 +35,33 @@ describe("ChatGPT assistant helpers", () => {
       runStartedAt: "not-a-date",
     })).toEqual([
       "Project folder is required.",
+      "Content set is required.",
       "Output filename is required.",
       "Target version folder is required.",
+      "Output profile is required for production framing.",
+      "Resolved logo asset is required for production framing.",
       "Run start time is invalid.",
     ]);
   });
 
   it("chooses active or newest visual version", () => {
     expect(getDefaultAssistVersionLabel({
-      selectedGeneratedVersion: "Version 1.1",
+      selectedGeneratedVersion: "v002",
       generatedFiles: [],
-    })).toBe("Version 1.1");
+    })).toBe("v002");
 
     expect(getDefaultAssistVersionLabel({
       selectedGeneratedVersion: "",
       generatedFiles: [
-        visualFile({ versionLabel: "Version 1.0" }),
-        visualFile({ id: "v2", versionLabel: "Version 2.0" }),
+        visualFile({ versionLabel: "v001" }),
+        visualFile({ id: "v2", versionLabel: "v002" }),
       ],
-    })).toBe("Version 2.0");
+    })).toBe("v003");
   });
 
   it("normalizes version folders and image filenames", () => {
-    expect(normalizeAssistVersionLabel("Version 1.0/unsafe")).toBe("Version 1.0-unsafe");
-    expect(normalizeAssistVersionLabel("Unversioned")).toBe("Version 1.0");
+    expect(normalizeAssistVersionLabel("Version 1.0/unsafe")).toBe("v001");
+    expect(normalizeAssistVersionLabel("Unversioned")).toBe("v001");
     expect(normalizeAssistImageFilename("01-slide.png.png")).toBe("01-slide.png");
     expect(normalizeAssistImageFilename("02-slide", ".webp")).toBe("02-slide.webp");
     expect(normalizeAssistImageFilename("03-slide.JPG")).toBe("03-slide.jpg");

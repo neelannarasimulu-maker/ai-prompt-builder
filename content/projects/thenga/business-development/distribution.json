@@ -1,0 +1,21 @@
+{
+  "version": 1,
+  "records": [
+    {
+      "projectFolder": "content/projects/thenga/business-development",
+      "projectLabel": "Thenga Business Development",
+      "contentLabel": "thenga standard bank pitch set v003",
+      "generatedContentIds": [
+        "content/projects/thenga/business-development/visuals/standard-bank-pitch-set/_generated/v003/thenga-standard-bank-pitch-set-v003.pdf"
+      ],
+      "channel": "whatsapp",
+      "status": "sent",
+      "plannedDate": "2026-06-20",
+      "sentDate": "2026-06-18",
+      "id": "83aaf632-9e24-4ade-a64c-279b4529ee90",
+      "recipient": "Thenga Executive Team",
+      "createdAt": "2026-06-20T12:03:30.462Z",
+      "updatedAt": "2026-06-20T12:03:30.462Z"
+    }
+  ]
+}

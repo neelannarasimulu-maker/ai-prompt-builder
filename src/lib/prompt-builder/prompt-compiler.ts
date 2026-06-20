@@ -1,7 +1,9 @@
 import {
   compactBlock,
   compactSentence,
+  detectedMarkdownSectionHeadings,
   getSection,
+  ignoredLegacyOutputRuleSections,
   linesFromBlock,
   parseMarkdownSections,
   ParsedSections,
@@ -24,17 +26,18 @@ import {
   renderContractToPrompt,
   type RenderContract,
 } from "./render-contract";
-import { buildDocumentGenerationContract } from "./document-output";
+import { buildDocumentProductionPrompt } from "./document-prompt-template";
 import { buildBrandDesignContract } from "./brand-design-contract";
 import {
-  buildAttachedDocumentPrompt,
-  buildInlineDocumentPrompt,
-  buildPastedDocumentRunPrompt,
   splitDocumentBodyIntoChunks,
   type DocumentPromptParts,
 } from "./document-prompt-parts";
 import { lintCompiledPrompt, type PromptLintResult } from "./prompt-lint";
 import { resolvePromptLogoAsset } from "./logo-resolution";
+import {
+  buildVisualProductionPrompt,
+  type VisualGenerationMode,
+} from "./visual-prompt-template";
 
 export type OutputType = "image" | "document" | "pdf" | "text" | "email";
 
@@ -46,6 +49,8 @@ export type OutputProfileLike = {
   useCase?: string;
   instruction?: string;
   promptInstruction?: string;
+  safeMargins?: string;
+  typography?: string;
 };
 
 export type PromptCompressionProfile = "compact" | "expanded" | "singleMessageDocument";
@@ -69,6 +74,7 @@ export type CompilePromptInput = {
   logoRules?: string;
   typographyRules?: string;
   documentRules?: string;
+  projectDocumentRules?: string;
   tableRules?: string;
   projectRules?: string;
   visualRules?: string;
@@ -78,6 +84,8 @@ export type CompilePromptInput = {
   backgroundPresetId?: string;
   documentBackgroundPresetId?: string;
   backgroundTheme?: BackgroundTheme;
+  generationMode?: VisualGenerationMode;
+  safeMargins?: string;
   compressionProfile?: PromptCompressionProfile;
 };
 
@@ -99,6 +107,11 @@ export type CompiledPromptResult = {
     brandColours: string;
     logoAsset: string;
     backgroundTheme: string;
+    detectedSections: string[];
+    ignoredLegacySections: string[];
+    coverPageContent: string;
+    tableOfContentsContent: string;
+    linkedinPostText: string;
   };
   sections: ParsedSections;
   dynamicLayoutPlan: DynamicLayoutPlan;
@@ -124,7 +137,11 @@ function isDocumentLike(outputType: OutputType): boolean {
 }
 
 function isTextLike(outputProfile: OutputProfileLike): boolean {
-  return outputProfile.outputType === "text" || outputProfile.outputType === "email" || outputProfile.id === "linkedin_post_text";
+  return outputProfile.outputType === "text" || outputProfile.outputType === "email";
+}
+
+function isLinkedInImage(outputProfile: OutputProfileLike): boolean {
+  return outputProfile.outputType === "image" && outputProfile.id.startsWith("linkedin_");
 }
 
 function getOutputLabel(outputProfile: OutputProfileLike): string {
@@ -202,6 +219,11 @@ function usefulSnippet(input?: string, maxWords = 22): string {
   return snippet;
 }
 
+function buildShortVisualBrandStyle(visualRules?: string): string {
+  return firstSentence(firstParagraph(visualRules)) ||
+    "Use premium executive styling appropriate to the brand.";
+}
+
 function firstSentence(input?: string): string {
   const source = compactSentence(input);
   if (!source) return "";
@@ -217,6 +239,101 @@ function firstMeaningfulContentLine(input?: string): string {
     .filter(Boolean)
     .filter((line) => !/^#{1,6}\s+/.test(line))
     .find((line) => !/^use\b|^for\b|^do not\b/i.test(line)) || "";
+}
+
+function extractLabelValue(input: string | undefined, label: string): string {
+  const source = compactBlock(input);
+  const line = source
+    .split("\n")
+    .map((item) => item.replace(/^[-*]\s+/, "").trim())
+    .find((item) => item.toLowerCase().startsWith(`${label.toLowerCase()}:`));
+  return line?.slice(line.indexOf(":") + 1).trim() || "";
+}
+
+function extractMarkdownSubsection(input: string | undefined, heading: string): string {
+  const lines = compactBlock(input).split("\n");
+  const start = lines.findIndex((line) => line.trim().toLowerCase() === `## ${heading.toLowerCase()}`);
+  if (start < 0) return "";
+  const endOffset = lines.slice(start + 1).findIndex((line) => /^##\s+/.test(line.trim()));
+  const end = endOffset < 0 ? lines.length : start + 1 + endOffset;
+  return lines.slice(start + 1, end).join("\n").trim();
+}
+
+function buildProjectContext(input: CompilePromptInput): string {
+  const lines = compactBlock(input.projectRules)
+    .split("\n")
+    .map((line) => line.replace(/^#{1,6}\s+/, "").replace(/^[-*]\s+/, "").trim())
+    .filter(Boolean)
+    .filter((line) => normalizeForDedup(line) !== normalizeForDedup(input.projectLabel))
+    .filter((line) => !/^(brand|project|tone)\s*:/i.test(line));
+  return limitWords(lines.slice(0, 3).join(" "), 55);
+}
+
+function resolveDocumentType(contentKind: string, contentLabel: string): string {
+  if (contentKind === "legal_document") return "Agreement or legal/business document";
+  if (contentKind === "document_template") return "Document template";
+  if (contentKind === "commercial_document") return "Commercial document";
+  const label = contentLabel.toLowerCase();
+  if (label.includes("proposal")) return "Proposal";
+  if (label.includes("report")) return "Report";
+  if (label.includes("business case")) return "Business case";
+  if (label.includes("one-pager") || label.includes("one pager")) return "One-pager";
+  if (label.includes("agreement")) return "Agreement";
+  return "Professional business document";
+}
+
+function buildVisualFontRules(typographyRules?: string): string {
+  const visualTypography = extractMarkdownSubsection(typographyRules, "Visual Typography");
+  const source = visualTypography || filterLinesContaining(typographyRules, [
+    "document title", "document descriptor", "heading 1", "heading 2", "heading 3",
+    "body text", "small text", "footer text", "spacing before", "spacing after",
+  ]);
+  return limitWords(compactSentence(source.replace(/^[-*]\s+/gm, "")), 58) || "Use clear, readable brand typography with strong title-to-body hierarchy.";
+}
+
+function buildVisualFontStyle(typographyRules?: string): string {
+  const source = extractMarkdownSubsection(typographyRules, "Visual Typography") || compactBlock(typographyRules);
+  const styleLine = source
+    .split("\n")
+    .map(cleanMarkdownLine)
+    .find((line) => /font|sans-serif|montserrat|aptos|open sans/i.test(line) && !/:$/.test(line));
+  return limitWords(styleLine?.replace(/^use\s+/i, "") || "Clean executive sans-serif typography.", 20);
+}
+
+function buildOutputTypographyRules(outputProfile: OutputProfileLike, typographyRules?: string): string {
+  const profileRules = compactBlock(outputProfile.typography);
+  if (isLinkedInImage(outputProfile)) {
+    return profileRules || "Use large, high-contrast, mobile-readable LinkedIn typography.";
+  }
+
+  if (isDocumentLike(outputProfile.outputType)) {
+    return profileRules || "Use clear executive document typography with a readable A4 hierarchy.";
+  }
+
+  const brandRules = extractMarkdownSubsection(typographyRules, "Visual Typography");
+  return [profileRules, compactBlock(brandRules)].filter(Boolean).join("\n") ||
+    buildVisualFontRules(typographyRules);
+}
+
+function sanitizeLinkedInVisibleText(input: string): string {
+  return input
+    .split("\n")
+    .filter((line) => !/^\s*(?:asset\s+(?:format|frame)|format)\s*:/i.test(line))
+    .join("\n")
+    .trim();
+}
+
+function resolveLinkedInAssetInstruction(imageBrief: string): string {
+  const requestsMultipleImages = /\bcarousel\b|\b(?:separate|multiple)\s+(?:4:5\s+)?(?:portrait\s+)?images?\b|\b[2-9]\s*[- ]image\b|\bone image per (?:page|panel)\b|\bpage\s+[2-9]\b/i.test(imageBrief);
+  return requestsMultipleImages
+    ? "Resolved asset mode from Image Brief: create a set of separate 4:5 images, one per requested page or panel; do not combine them into one image."
+    : "Resolved asset mode from Image Brief: create one finished 4:5 image.";
+}
+
+function backgroundModeSummary(theme: BackgroundThemeDefinition): string {
+  if (theme.id === "light") return "Use the preset in a bright, brand-tinted light mode with highly readable text zones.";
+  if (theme.id === "dark") return "Use the preset in a deep brand-toned mode with protected high-contrast text zones.";
+  return "Use the preset in a balanced light-to-medium mode with clear brand depth and readable text zones.";
 }
 
 function extractInlineCode(input?: string): string {
@@ -299,18 +416,6 @@ function extractBrandColours(input: {
   return "derive colours from the supplied official logo and keep the palette consistent with the brand asset.";
 }
 
-function compactRuleBlock(input?: string, maxLines = 8): string {
-  const source = compactBlock(input);
-  if (!source) return "";
-  const lines = source
-    .split("\n")
-    .map((line) => line.trim())
-    .filter(Boolean)
-    .filter((line) => !/^#{1,6}\s+/.test(line));
-
-  return lines.slice(0, maxLines).join("\n");
-}
-
 function filterLinesContaining(input: string | undefined, forbiddenTerms: string[]): string {
   const source = compactBlock(input);
   if (!source) return "";
@@ -374,26 +479,6 @@ function buildLogoReferenceBlock(input: CompilePromptInput): string {
   return lines.join("\n");
 }
 
-function buildVisualDeckStructureLock(input: {
-  brandLabel: string;
-  resolvedHeaderText: string;
-  resolvedFooterText: string;
-}): string {
-  return [
-    "Deck structure lock: 16:9 landscape, light executive canvas, approximately 4% safe margins from all edges.",
-    `Fixed header zone: 8-10% of slide height. Place the official ${input.brandLabel} logo top-left with consistent size, placement and treatment across this brand/project.`,
-    `Header lock: header text on the same horizontal line as the logo; use "${input.resolvedHeaderText}" in compact executive sans, approximately 8.5-10pt equivalent, never competing with the body title.`,
-    "Fixed footer zone: 6-8% of slide height. Use a consistent brand-aligned footer bar or footer band with restrained accent treatment.",
-    `Footer lock: use exactly "${input.resolvedFooterText}" in 8-9pt equivalent footer text, centred or evenly spaced; no footer icons, no wording changes.`,
-    "Only the body area may vary. Keep body layouts on the same invisible grid with consistent margins, title hierarchy, panel style, corner radius, shadow depth, line weights and executive typography.",
-    "Create meaningful variation through body layout, imagery, diagram structure, background texture, icon selection and content composition.",
-    "Do not repeat the same text-left/image-right block composition across slides. Use centre-stage diagrams, orbit maps, vertical journeys, horizontal timelines, full-width hero scenes, outcome walls, signal funnels and layered architecture where the content calls for it.",
-    "Use bold typographic hierarchy, coloured emphasis, highlight bands, callout pills, accent rules and contrast panels to make important exact words stand out without changing the wording.",
-    "Use striking dimensional imagery, vibrant gradients, luminous brand accents and content-specific diagrams; avoid flat unstyled text blocks and generic stock-style visuals.",
-    "Before finalizing, verify header, footer, logo placement, logo size, outer margins and footer wording match the deck master.",
-  ].join("\n");
-}
-
 function buildBrandCapsule(input: {
   outputType: OutputType;
   brandId?: string;
@@ -411,6 +496,7 @@ function buildBrandCapsule(input: {
   footerRules?: string;
   resolvedHeaderText: string;
   resolvedFooterText: string;
+  outputTypographyRules: string;
 }): string {
   const brandColours = extractBrandColours(input);
   const brandBase = limitWords(
@@ -421,42 +507,16 @@ function buildBrandCapsule(input: {
     58
   );
 
-  const visualTone = usefulSnippet(input.visualRules, 32);
-  const documentTone = usefulSnippet(input.documentRules, 32);
-  const typography = usefulSnippet(input.typographyRules, 22);
+  const documentTone = usefulSnippet(
+    filterLinesContaining(input.documentRules, [input.outputType === "document" ? "pdf" : "word"]),
+    32
+  );
   const tableRules = usefulSnippet(input.tableRules, 22);
   const logo = input.logoAsset
-    ? `Logo: ${input.logoUsageNote || `use official asset ${input.logoAsset} in the header on every ${input.outputType === "image" ? "slide" : "page"}; do not redraw, recolour, stretch, replace, crop or invent a logo.`}`
+    ? `Logo: ${input.logoUsageNote || `use official asset ${input.logoAsset} in the header on every page; do not redraw, recolour, stretch, replace, crop or invent a logo.`}`
     : "Logo: use clean text branding if no official asset is available.";
   const brandLine = brandBase || `Brand: ${input.brandLabel}.`;
   const colourLine = `Brand colours: ${brandColours}`;
-  const deckLocked = input.outputType === "image";
-  const fontLine = deckLocked
-    ? "Fonts/sizes: executive sans-serif; slide title 24-34pt; body 12-18pt; header font 8.5-10pt; footer text 8-9pt."
-    : "Fonts/sizes: executive sans-serif; slide title 24-34pt; body 12-18pt; header/footer small, clean and legible.";
-  const deckLock = deckLocked
-    ? buildVisualDeckStructureLock({
-        brandLabel: input.brandLabel,
-        resolvedHeaderText: input.resolvedHeaderText,
-        resolvedFooterText: input.resolvedFooterText,
-      })
-    : "";
-
-  if (input.outputType === "image") {
-    return [
-      brandLine,
-      colourLine,
-      visualTone ? `Visual tone: ${visualTone}` : "",
-      typography ? `Typography: ${typography}` : "",
-      "Theme/style: premium, brand-led, readable, executive and uncluttered.",
-      fontLine,
-      `Header: ${input.resolvedHeaderText}`,
-      `Footer: ${input.resolvedFooterText}`,
-      logo,
-      deckLock,
-      "Avoid: unsupported claims, fake metrics, generic dashboards, clutter, and visible text not supplied below.",
-    ].filter(Boolean).join("\n");
-  }
 
   if (input.outputType === "document" || input.outputType === "pdf") {
     return [
@@ -465,7 +525,7 @@ function buildBrandCapsule(input: {
       `Header on every page: ${input.resolvedHeaderText}`,
       `Footer on every page: ${input.resolvedFooterText}`,
       documentTone ? `Document style: ${documentTone}` : "",
-      "Fonts/sizes: executive sans-serif; clear A4 hierarchy; readable body text; compact header/footer.",
+      `Typography for this output:\n${input.outputTypographyRules}`,
       tableRules ? `Tables: ${tableRules}` : "Tables: render Markdown tables as formatted document tables.",
       logo,
     ].filter(Boolean).join("\n");
@@ -485,7 +545,7 @@ function buildCompactSourceOfTruth(outputProfile: OutputProfileLike): string {
   }
 
   if (isDocumentLike(outputProfile.outputType)) {
-    return "Use the attached/copied Markdown source as the body source of truth. Preserve headings, paragraphs, tables, blank fields, options, checkboxes, and scoring values exactly.";
+    return "Use the attached Markdown file as the source of truth. Read it completely, use its named content sections as instructed, and preserve headings, paragraphs, tables, blank fields, options, checkboxes, and scoring values exactly.";
   }
 
   return "Use only the supplied content as source material. Do not add unsupported claims or invented facts.";
@@ -496,8 +556,12 @@ function outputSurfaceInstruction(outputProfile: OutputProfileLike): string {
     return `Create one ${getOutputLabel(outputProfile)} slide.`;
   }
 
-  if (outputProfile.outputType === "document" || outputProfile.outputType === "pdf") {
-    return `Create A4 page(s) for ${getOutputLabel(outputProfile)}.`;
+  if (outputProfile.outputType === "document") {
+    return "Create one A4 Word document and return a .docx file only.";
+  }
+
+  if (outputProfile.outputType === "pdf") {
+    return "Create one A4 PDF document and return a .pdf file only.";
   }
 
   return `Create ${getOutputLabel(outputProfile)}.`;
@@ -513,8 +577,12 @@ function buildTask(input: {
     return `Create one ${getOutputLabel(input.outputProfile)} slide titled "${input.contentLabel}" for ${input.brandLabel}. Use the ${input.projectLabel} context.`;
   }
 
-  if (input.outputProfile.outputType === "document" || input.outputProfile.outputType === "pdf") {
-    return `Create A4 page(s) titled "${input.contentLabel}" for ${input.brandLabel}. Use the ${input.projectLabel} context.`;
+  if (input.outputProfile.outputType === "document") {
+    return `Create one A4 Word document titled "${input.contentLabel}" for ${input.brandLabel} and return .docx only. Use the ${input.projectLabel} context.`;
+  }
+
+  if (input.outputProfile.outputType === "pdf") {
+    return `Create one A4 PDF document titled "${input.contentLabel}" for ${input.brandLabel} and return .pdf only. Use the ${input.projectLabel} context.`;
   }
 
   return `Create ${getOutputLabel(input.outputProfile)} titled "${input.contentLabel}" for ${input.brandLabel}. Use the ${input.projectLabel} context.`;
@@ -522,33 +590,21 @@ function buildTask(input: {
 
 function buildOutputDirection(input: {
   outputProfile: OutputProfileLike;
-  resolvedLayoutPreset: LayoutPreset;
-  resolvedBackgroundPreset: BackgroundPreset;
   resolvedDocumentBackgroundPreset: DocumentBackgroundPreset;
   resolvedBackgroundTheme: BackgroundThemeDefinition;
-  plan: DynamicLayoutPlan;
-  imageBrief?: string;
-  documentOutputRules?: string;
+  projectDocumentRules?: string;
   contentConstraints?: string;
 }): string {
-  if (input.outputProfile.outputType === "image") {
-    return [
-      outputSurfaceInstruction(input.outputProfile),
-      `Layout: ${input.plan.layoutPresetId}. ${limitWords(firstSentence(input.resolvedLayoutPreset.prompt), 24)}`,
-      `Background theme: ${input.resolvedBackgroundTheme.label}. ${input.resolvedBackgroundTheme.visualPrompt}`,
-      `Background preset refinement: ${input.plan.backgroundPresetId}. ${limitWords(firstSentence(input.resolvedBackgroundPreset.prompt), 18)}`,
-      `Composition zones: ${input.plan.zones.filter((zone) => zone.name !== "header" && zone.name !== "footer").map((zone) => `${zone.name} (${zone.purpose})`).join(" | ")}`,
-      input.imageBrief ? `Scene: ${limitWords(input.imageBrief, 90)}` : "",
-    ].filter(Boolean).join("\n");
-  }
-
   if (isDocumentLike(input.outputProfile.outputType)) {
     return [
       outputSurfaceInstruction(input.outputProfile),
       `Page background theme: ${input.resolvedBackgroundTheme.label}. ${input.resolvedBackgroundTheme.documentPrompt}`,
       `Document style refinement: ${limitWords(firstSentence(input.resolvedDocumentBackgroundPreset.prompt), 28)}`,
-      input.documentOutputRules ? `Output rules: ${limitWords(input.documentOutputRules, 44)}` : "",
-      input.contentConstraints ? `Constraints: ${limitWords(input.contentConstraints, 32)}` : "",
+      input.projectDocumentRules ? `Project document rules: ${limitWords(compactSentence(filterLinesContaining(
+        input.projectDocumentRules,
+        [input.outputProfile.outputType === "document" ? "pdf" : "word"]
+      )), 70)}` : "",
+      `Document rendering rules:\n${buildDocumentFinalRules(input.outputProfile)}`,
     ].filter(Boolean).join("\n");
   }
 
@@ -575,91 +631,40 @@ function buildCompactPrompt(input: {
   ].join("\n\n").trim();
 }
 
-function buildVisualStyleContract(input: CompilePromptInput, resolvedLayoutPreset: LayoutPreset, resolvedBackgroundPreset: BackgroundPreset, plan: DynamicLayoutPlan): string {
-  const parts: string[] = [];
-
-  const visualHeader = compactRuleBlock(
-    filterLinesContaining(input.headerRules, [
-      "word", "pdf", "page number", "page numbers", "on every page", "document", "docx"
-    ]),
-    4
-  );
-  const visualFooter = compactRuleBlock(
-    filterLinesContaining(input.footerRules, [
-      "word", "pdf", "page number", "page numbers", "on every page", "document", "docx"
-    ]),
-    4
-  );
-  const visualTypography = compactRuleBlock(
-    filterLinesContaining(input.typographyRules, [
-      "document typography", "word", "pdf", "page number", "document"
-    ]),
-    6
-  );
-  const visualDesign = compactRuleBlock(
-    filterLinesContaining(input.visualRules, [
-      "word", "pdf", "page number", "page numbers", "document body", "body content", "docx"
-    ]),
-    12
-  );
-  const logoHandling = compactRuleBlock(
-    filterLinesContaining(input.logoRules, [
-      "prompt-builder note", "base64", "word", "pdf", "document"
-    ]),
-    8
-  );
-
-  if (visualHeader) parts.push(`Header rules:
-${visualHeader}`);
-  if (visualFooter) parts.push(`Footer rules:
-${visualFooter}`);
-  if (logoHandling) parts.push(`Logo rules:
-${logoHandling}`);
-  if (visualTypography) parts.push(`Visual typography rules:
-${visualTypography}`);
-  if (visualDesign) parts.push(`Visual design rules:
-${visualDesign}`);
-
-  parts.push([
-    `Layout: ${plan.layoutPresetId} - ${resolvedLayoutPreset.prompt}`,
-    `Background: ${plan.backgroundPresetId} - ${resolvedBackgroundPreset.prompt}`,
-    `Text placement: ${plan.textPlacement}`,
-    `Image placement: ${plan.imagePlacement}`,
-    `Font strategy: ${plan.fontStrategy}`,
-  ].join("\n"));
-
-  return parts.join("\n\n").trim();
-}
-
-function buildVisualFinalRules(hasLogo: boolean, deckLocked = false): string {
+function buildDocumentFinalRules(outputProfile: OutputProfileLike): string {
+  const wordOutput = outputProfile.outputType === "document";
+  const fileRules = wordOutput
+    ? [
+        "Generate and return a .docx Word document only.",
+        "Render Markdown pipe tables as properly formatted Word tables.",
+      ]
+    : [
+        "Generate and return a .pdf PDF document only.",
+        "Render Markdown pipe tables as properly formatted PDF tables.",
+      ];
   return dedupeLines([
-    "Use only the Visible Text as on-image text.",
-    "Use Intent, Layout Hint, Background Hint and Image Brief as guidance only.",
-    "Do not add, remove, rewrite or reorder the supplied visible wording.",
-    "You may style exact visible words with bold weight, larger scale, colour, highlight bands, callout pills or accent rules, but the wording must remain exact.",
-    "Preserve numeric values, labels, bullets and grouping exactly as supplied.",
-    "Use the brand, header, footer, typography and style rules as rendering guidance only, not as visible content.",
-    "Create a finished image only. Do not include document-generation instructions in the output.",
-    hasLogo ? "Use the supplied official logo asset where supported." : "Use clean text branding if no logo asset is supplied.",
-    "Do not invent a replacement logo.",
-    deckLocked ? "Vary only the body area; never vary header structure, footer structure, logo placement, logo size, outer frame or master margins." : "",
-    deckLocked ? "Avoid repeating a generic left text panel plus right image panel unless that exact layout is requested. Choose a content-specific composition from the layout plan." : "",
-    deckLocked ? "Before finalizing, verify fixed header, footer, logo placement, outer margins and footer wording match the deck master." : "",
-    "Use striking dimensional imagery, vibrant gradients, luminous brand accents and content-specific diagrams where appropriate.",
-    "Avoid unsupported claims, fake metrics, fake dashboards, generic stock-style visuals and flat unstyled text blocks.",
-  ]).map((line) => `- ${line}`).join("\n");
-}
-
-function buildDocumentFinalRules(): string {
-  return dedupeLines([
+    "DIRECT CHATGPT FALLBACK ONLY. The production app owns A4 size, repeated chrome, page numbers and the real logo; never print chrome instructions as body content.",
     "Create the requested document immediately from the supplied Markdown source.",
-    "Use ## Body Content as the exact document body source of truth.",
+    ...fileRules,
+    "Use ## Cover Page Content only for the cover page when present or when the selected profile/template requires a cover page.",
+    "If ## Table of Contents is present, use it as the table of contents content.",
+    "If ## Table of Contents is not present and the selected document template requires a table of contents, generate one from the headings inside ## Body Content.",
+    "Use ## Body Content as the exact legal/business document body source of truth.",
+    "Do not print frontmatter, metadata, Intent, Layout Hint, Background Hint or legacy Document Output Rules as body content.",
     "Do not summarise, shorten, reorder, rename, remove or add content.",
-    "Render Markdown pipe tables as real formatted Word/PDF tables.",
-    "Preserve blank cells as blank fields for completion.",
-    "Use the supplied brand header, footer, logo and table styling rules.",
-    "Use repeated headers, repeated footers and dynamic page numbering where the output format supports it.",
-    "Keep the result premium, readable and print-ready.",
+    "Insert a page break after the cover page.",
+    "Insert a page break after the table of contents.",
+    "Start ## Body Content on the page after the table of contents.",
+    "Do not duplicate the cover page, table of contents or agreement title.",
+    "Let all ## Body Content sections flow continuously in source order; do not insert a page break before every numbered or top-level section.",
+    "Use slightly increased spacing between major sections for readability, while keeping the document compact and professional.",
+    "Keep each section heading with enough of its opening paragraph or clause to establish the section on the same page.",
+    "If a section would begin too near the bottom of a page and immediately continue onto the next page, move that section heading and its opening content to the next page instead.",
+    "After a section has started with meaningful content, allow it to continue naturally across pages when necessary.",
+    "Signature sections must begin on a new page. Use increased spacing between signature/completion lines so each field is clearly writable.",
+    "Preserve all heading and clause numbering exactly as supplied.",
+    "For direct ChatGPT fallback, use the supplied brand header, footer, logo and table styling guidance.",
+    "For direct ChatGPT fallback, use repeated headers, footers and dynamic page numbering where supported.",
   ]).map((line) => `- ${line}`).join("\n");
 }
 
@@ -688,9 +693,13 @@ function buildSourceOfTruthRules(outputProfile: OutputProfileLike): string {
 
   if (isDocumentLike(outputProfile.outputType)) {
     return [
-      "The document body source of truth is the ## Body Content section inside the delimited source Markdown.",
+      "Use ## Cover Page Content only for the cover page when present or when the selected profile/template requires a cover page.",
+      "If ## Table of Contents is present, use it as the table of contents content.",
+      "If ## Table of Contents is not present and the selected document template requires a table of contents, generate one from the headings inside ## Body Content.",
+      "The document body source of truth is the ## Body Content section inside the attached Markdown file.",
       "If Body Content is absent, use Visible Text as the fallback body source.",
-      "Brand, layout, header, footer, and table rules are formatting guidance only.",
+      "Do not print frontmatter, prompt-builder metadata, Intent, Layout Hint, Background Hint or legacy Document Output Rules as document body content.",
+      "Brand, layout, header, footer, logo and table rules are injected by the prompt template as formatting guidance only.",
     ].join("\n");
   }
 
@@ -712,7 +721,9 @@ function buildValidationRules(outputProfile: OutputProfileLike, deckLocked = fal
   if (isDocumentLike(outputProfile.outputType)) {
     return [
       "Before finalizing, verify that every heading, paragraph, table row, blank cell, checkbox, option, and score from Body Content is preserved.",
+      "Verify cover page content is used only on the cover page when supplied.",
       "Verify that Markdown pipe tables are rendered as formatted document tables.",
+      "Verify body sections flow continuously, headings are not stranded at page bottoms, and signature blocks are not split across pages.",
     ].join("\n");
   }
 
@@ -746,8 +757,8 @@ function buildActionPrompt(input: { outputProfile: OutputProfileLike; logoAsset?
     return [
       "Action steps:",
       "1. Copy the Production prompt.",
-      "2. Attach the source Markdown file if you want ChatGPT to read the file directly, or paste the run-ready prompt as-is.",
-      "3. Run the prompt. It already tells ChatGPT to create the requested document immediately.",
+      "2. Attach the selected source Markdown file to ChatGPT.",
+      "3. Paste and run the Production prompt. It tells ChatGPT to read the attachment completely and create the document immediately.",
       input.logoAsset
         ? `4. Use the official logo asset where supported: ${input.logoAsset}`
         : "4. Use the brand header text if no logo asset is available.",
@@ -764,7 +775,7 @@ function buildActionPrompt(input: { outputProfile: OutputProfileLike; logoAsset?
         ? `3. Ensure the official logo asset is available: ${input.logoAsset}`
         : "3. Ensure the brand text is used cleanly if no logo asset is supplied.",
       "4. Run the prompt to generate the visual.",
-      "5. Save the generated file into the selected project's generated-content folder.",
+      "5. Save the generated file into the selected content set's _generated/vNNN folder.",
     ].join("\n");
   }
 
@@ -778,21 +789,29 @@ function buildActionPrompt(input: { outputProfile: OutputProfileLike; logoAsset?
 
 export function compilePrompt(input: CompilePromptInput): CompiledPromptResult {
   const sections = parseMarkdownSections(input.contentMarkdown || "");
+  const detectedSections = detectedMarkdownSectionHeadings(input.contentMarkdown || "");
+  const ignoredLegacySections = ignoredLegacyOutputRuleSections(input.contentMarkdown || "");
 
   const intent = getSection(sections, "Intent", "Source Intent");
-  const visibleText = getSection(sections, "Visible Text");
+  const rawVisibleText = getSection(sections, "Visible Text");
   const contentHeaderText = getSection(sections, "Header Text");
   const contentFooterText = getSection(sections, "Footer Text");
   const contentLogoRules = getSection(sections, "Logo Asset", "Logo");
   const imageBrief = getSection(sections, "Image Brief");
+  const coverPageContent = getSection(sections, "Cover Page Content");
+  const tableOfContentsContent = getSection(sections, "Table of Contents");
   const bodyContent = getSection(sections, "Body Content", "Document Body Content", "Body");
+  const linkedinPostText = getSection(sections, "LinkedIn Post Text") ||
+    (input.contentType.toLowerCase() === "linkedin" ? bodyContent : "");
+  const linkedInImage = isLinkedInImage(input.outputProfile);
+  const visibleText = linkedInImage ? sanitizeLinkedInVisibleText(rawVisibleText) : rawVisibleText;
   const postBrief = getSection(sections, "Post Brief");
   const keyPoints = getSection(sections, "Key Points");
   const callToAction = getSection(sections, "Call To Action");
   const optionalNotes = getSection(sections, "Optional Notes");
   const contentConstraints = getSection(sections, "Content Constraints", "Constraints");
-  const documentOutputRules = getSection(sections, "Document Output Rules", "Output Rules");
   const bodySource = bodyContent || visibleText;
+  const outputTypographyRules = buildOutputTypographyRules(input.outputProfile, input.typographyRules);
   const resolvedHeaderText = resolveHeaderFooterText({
     contentValue: contentHeaderText,
     projectValue: input.projectHeaderRules,
@@ -813,11 +832,16 @@ export function compilePrompt(input: CompilePromptInput): CompiledPromptResult {
     sections,
     requestedLayoutPresetId: input.layoutPresetId,
     requestedBackgroundPresetId: input.backgroundPresetId,
+    requestedDocumentBackgroundPresetId: input.documentBackgroundPresetId,
   });
 
   const resolvedLayoutPreset = getLayoutPreset(dynamicLayoutPlan.layoutPresetId);
   const resolvedBackgroundPreset = getBackgroundPreset(dynamicLayoutPlan.backgroundPresetId);
-  const resolvedDocumentBackgroundPreset = getDocumentBackgroundPreset(input.documentBackgroundPresetId);
+  const resolvedDocumentBackgroundPreset = getDocumentBackgroundPreset(
+    isDocumentLike(input.outputProfile.outputType)
+      ? dynamicLayoutPlan.backgroundPresetId
+      : input.documentBackgroundPresetId
+  );
   const resolvedBackgroundTheme = getBackgroundTheme(
     input.backgroundTheme || inferBackgroundThemeFromPreset({
       backgroundPresetId: input.backgroundPresetId,
@@ -855,11 +879,14 @@ export function compilePrompt(input: CompilePromptInput): CompiledPromptResult {
     plan: dynamicLayoutPlan,
   });
 
-  const warnings: string[] = [];
+  const warnings = [...(dynamicLayoutPlan.warnings || [])];
   if (!intent) warnings.push("Missing Intent section.");
   if (input.outputProfile.outputType === "image" && !visibleText) warnings.push("Missing Visible Text section.");
   if (input.outputProfile.outputType === "image" && !imageBrief) warnings.push("Missing Image Brief section.");
   if (isDocumentLike(input.outputProfile.outputType) && !bodySource) warnings.push("Document/PDF output should include Body Content or Visible Text.");
+  if (isDocumentLike(input.outputProfile.outputType) && ignoredLegacySections.length > 0) {
+    warnings.push("Legacy output rules found in Markdown. These will be ignored because output rules are now injected by the prompt template.");
+  }
 
   const contentBlocks: string[] = [];
   const expandedRuleBlocks: string[] = [];
@@ -892,44 +919,14 @@ export function compilePrompt(input: CompilePromptInput): CompiledPromptResult {
   }
 
   if (input.outputProfile.outputType === "image") {
-    if (deckLocked) {
-      addBlock(expandedRuleBlocks, "Deck Structure Lock", buildVisualDeckStructureLock({
-        brandLabel: input.brandLabel,
-        resolvedHeaderText,
-        resolvedFooterText,
-      }));
-    }
-    addBlock(expandedRuleBlocks, "Visual Style Contract", buildVisualStyleContract(input, resolvedLayoutPreset, resolvedBackgroundPreset, dynamicLayoutPlan));
-    addBlock(contentBlocks, "Intent", intent);
-    if (visibleText) {
-      contentBlocks.push(`Exact Visible Text:\nBEGIN EXACT VISIBLE TEXT\n${linesFromBlock(visibleText).join("\n")}\nEND EXACT VISIBLE TEXT`);
-    }
-    addBlock(contentBlocks, "Optional Notes", optionalNotes);
-    addBlock(expandedRuleBlocks, "Final Rules", buildVisualFinalRules(Boolean(resolvedLogoAsset || input.logoSourceText?.trim()), deckLocked));
+    // Visual production is assembled once by buildVisualProductionPrompt below.
   } else if (isDocumentLike(input.outputProfile.outputType)) {
-    addBlock(expandedRuleBlocks, "Document Generation Contract", buildDocumentGenerationContract({
-      sections,
-      brandLabel: input.brandLabel,
-      projectLabel: input.projectLabel,
-      contentLabel: input.contentLabel,
-      outputLabel: getOutputLabel(input.outputProfile),
-      logoAsset: resolvedLogoAsset,
-      headerRules: [input.headerRules, input.projectHeaderRules, resolvedHeaderText ? `Resolved header text: ${resolvedHeaderText}` : ""].filter(Boolean).join("\n\n"),
-      footerRules: [input.footerRules, input.projectFooterRules, resolvedFooterText ? `Resolved footer text: ${resolvedFooterText}` : ""].filter(Boolean).join("\n\n"),
-      logoRules: input.logoRules,
-      typographyRules: input.typographyRules,
-      documentRules: input.documentRules,
-      tableRules: input.tableRules,
-      documentBackgroundPrompt: resolvedDocumentBackgroundPreset.prompt,
-    }));
-    addBlock(contentBlocks, "Intent", intent);
-    addBlock(contentBlocks, "Optional Notes", optionalNotes);
-    addBlock(expandedRuleBlocks, "Final Rules", buildDocumentFinalRules());
+    // Document production is assembled once by buildDocumentProductionPrompt below.
   } else {
     const generalStyle = buildBrandDesignContract({
       outputType: input.outputProfile.outputType,
       typographyRules: input.typographyRules,
-      documentRules: input.documentRules,
+      documentRules: [input.documentRules, input.projectDocumentRules].filter(Boolean).join("\n\n"),
       tableRules: input.tableRules,
       visualRules: input.visualRules,
       headerRules: input.headerRules,
@@ -949,7 +946,7 @@ export function compilePrompt(input: CompilePromptInput): CompiledPromptResult {
     addBlock(expandedRuleBlocks, "Final Rules", buildTextFinalRules());
   }
 
-  const brandCapsule = buildBrandCapsule({
+  const brandCapsule = input.outputProfile.outputType === "image" ? "" : buildBrandCapsule({
     outputType: input.outputProfile.outputType,
     brandId: input.brandId,
     brandLabel: input.brandLabel,
@@ -959,13 +956,14 @@ export function compilePrompt(input: CompilePromptInput): CompiledPromptResult {
     brandRules: input.brandRules,
     projectRules: input.projectRules,
     typographyRules: input.typographyRules,
-    documentRules: input.documentRules,
+    documentRules: [input.documentRules, input.projectDocumentRules].filter(Boolean).join("\n\n"),
     tableRules: input.tableRules,
     visualRules: input.visualRules,
     headerRules: input.headerRules,
     footerRules: input.footerRules,
     resolvedHeaderText,
     resolvedFooterText,
+    outputTypographyRules,
   });
   const brandColours = extractBrandColours({
     brandRules: input.brandRules,
@@ -977,72 +975,121 @@ export function compilePrompt(input: CompilePromptInput): CompiledPromptResult {
 
   const outputDirection = buildOutputDirection({
     outputProfile: input.outputProfile,
-    resolvedLayoutPreset,
-    resolvedBackgroundPreset,
     resolvedDocumentBackgroundPreset,
     resolvedBackgroundTheme,
-    plan: dynamicLayoutPlan,
-    imageBrief,
-    documentOutputRules,
+    projectDocumentRules: input.projectDocumentRules,
     contentConstraints,
   });
 
-  const compactPrompt = buildCompactPrompt({
-    task,
-    sourceOfTruth: buildCompactSourceOfTruth(input.outputProfile),
-    brandCapsule,
-    outputDirection,
-    contentBlocks,
-  });
+  const resolvedVisualTone = extractLabelValue(input.projectRules, "Tone") || usefulSnippet(input.visualRules, 24);
+  const resolvedThemeStyle = buildShortVisualBrandStyle(input.visualRules);
 
-  const expandedPrompt = buildStrictPrompt({
-    modeLabel: promptModeLabel(input.outputProfile),
-    task,
-    context,
-    outputFormat: getOutputLabel(input.outputProfile),
-    sourceOfTruthRules: buildSourceOfTruthRules(input.outputProfile),
-    nonNegotiableRules: expandedRuleBlocks.join("\n\n").trim() || "Use the supplied content exactly. Do not add unsupported claims.",
-    contentBlocks,
-    validationRules: buildValidationRules(input.outputProfile, deckLocked),
-  });
+  const visualProductionPrompt = input.outputProfile.outputType === "image"
+    ? buildVisualProductionPrompt({
+        brandName: input.brandLabel,
+        projectName: input.projectLabel,
+        contentTitle: input.contentLabel,
+        profileId: input.outputProfile.id,
+        outputFormat: getOutputLabel(input.outputProfile),
+        outputUseCase: input.outputProfile.useCase,
+        brandColours,
+        projectContext: buildProjectContext(input),
+        visualTone: resolvedVisualTone,
+        themeStyle: normalizeForDedup(resolvedThemeStyle) === normalizeForDedup(resolvedVisualTone) ? "" : resolvedThemeStyle,
+        fontRules: outputTypographyRules,
+        fontStyle: buildVisualFontStyle(input.typographyRules),
+        generationMode: input.generationMode || "direct_chatgpt",
+        isLinkedIn: linkedInImage,
+        outputInstruction: [
+          getOutputInstruction(input.outputProfile),
+          linkedInImage ? resolveLinkedInAssetInstruction(imageBrief) : "",
+        ].filter(Boolean).join("\n"),
+        headerText: resolvedHeaderText,
+        footerText: resolvedFooterText,
+        logoPath: resolvedLogoAsset || "",
+        safeMargins: input.safeMargins || input.outputProfile.safeMargins || "approximately 4% from every edge",
+        layoutPreset: resolvedLayoutPreset,
+        backgroundPreset: {
+          ...resolvedBackgroundPreset,
+          prompt: `${backgroundModeSummary(resolvedBackgroundTheme)} ${resolvedBackgroundPreset.prompt}`,
+        },
+        intent,
+        exactVisibleText: visibleText,
+        imageBrief,
+      })
+    : "";
+
+  const documentProductionPrompt = isDocumentLike(input.outputProfile.outputType)
+    ? buildDocumentProductionPrompt({
+        brandName: input.brandLabel,
+        projectName: input.projectLabel,
+        contentTitle: input.contentLabel,
+        outputType: input.outputProfile.outputType as "document" | "pdf",
+        pageSize: "A4",
+        orientation: /landscape/i.test(getOutputLabel(input.outputProfile)) ? "landscape" : "portrait",
+        documentType: resolveDocumentType(dynamicLayoutPlan.contentKind, input.contentLabel),
+        backgroundTheme: resolvedBackgroundTheme.label,
+        workflow: compactSentence(extractLabelValue(input.projectRules, "Workflow")) || "document_pack",
+        audience: compactSentence(extractLabelValue(input.projectRules, "Audience")) || `Business readers of the ${input.projectLabel} document set.`,
+        purpose: compactSentence(extractLabelValue(input.projectRules, "Purpose")) || `Create the selected ${input.projectLabel} document faithfully.`,
+        tone: compactSentence(extractLabelValue(input.projectRules, "Tone")) || "Professional, clear and business appropriate.",
+        brandColours,
+        logoPath: resolvedLogoAsset || "official brand logo",
+        headerText: resolvedHeaderText,
+        footerText: resolvedFooterText,
+      })
+    : "";
+
+  const compactPrompt = input.outputProfile.outputType === "image"
+    ? visualProductionPrompt
+    : isDocumentLike(input.outputProfile.outputType)
+      ? documentProductionPrompt
+    : buildCompactPrompt({
+        task,
+        sourceOfTruth: buildCompactSourceOfTruth(input.outputProfile),
+        brandCapsule,
+        outputDirection,
+        contentBlocks,
+      });
+
+  const expandedPrompt = input.outputProfile.outputType === "image"
+    ? visualProductionPrompt
+    : isDocumentLike(input.outputProfile.outputType)
+      ? documentProductionPrompt
+    : buildStrictPrompt({
+        modeLabel: promptModeLabel(input.outputProfile),
+        task,
+        context,
+        outputFormat: getOutputLabel(input.outputProfile),
+        sourceOfTruthRules: buildSourceOfTruthRules(input.outputProfile),
+        nonNegotiableRules: expandedRuleBlocks.join("\n\n").trim() || "Use the supplied content exactly. Do not add unsupported claims.",
+        contentBlocks,
+        validationRules: buildValidationRules(input.outputProfile, deckLocked),
+      });
 
   const bodyChunks = isDocumentLike(input.outputProfile.outputType)
     ? splitDocumentBodyIntoChunks(bodySource)
     : [];
 
   const documentAttachmentPrompt = isDocumentLike(input.outputProfile.outputType)
-    ? buildAttachedDocumentPrompt({
-        taskAndRules: compactPrompt,
-        sourceFilename: input.contentFilename,
-        expectedBodySection: "## Body Content",
-      })
+    ? documentProductionPrompt
     : "";
 
   const documentInlinePrompt = isDocumentLike(input.outputProfile.outputType)
-    ? buildInlineDocumentPrompt({
-        taskAndRules: compactPrompt,
-        bodyContent: bodySource,
-      })
+    ? documentProductionPrompt
     : "";
 
   const documentRunPrompt = isDocumentLike(input.outputProfile.outputType)
-    ? buildPastedDocumentRunPrompt({
-        taskAndRules: compactPrompt,
-        sourceMarkdown: input.contentMarkdown || "",
-        sourceFilename: input.contentFilename,
-        logoAsset: resolvedLogoAsset,
-        logoSourceText: shouldEmbedLogoSource(input.logoSourceText) ? input.logoSourceText : "",
-      })
+    ? documentProductionPrompt
     : "";
 
-  const productionPrompt =
-    compressionProfile === "expanded"
+  const productionPrompt = input.outputProfile.outputType === "image"
+    ? visualProductionPrompt
+    : isDocumentLike(input.outputProfile.outputType)
+    ? documentAttachmentPrompt
+    : compressionProfile === "expanded"
       ? expandedPrompt
-      : compressionProfile === "singleMessageDocument" && isDocumentLike(input.outputProfile.outputType)
-        ? documentRunPrompt
-        : isDocumentLike(input.outputProfile.outputType)
-          ? documentAttachmentPrompt
-          : compactPrompt;
+      : compactPrompt;
 
   const promptLint = lintCompiledPrompt({
     outputProfile: input.outputProfile,
@@ -1055,6 +1102,7 @@ export function compilePrompt(input: CompilePromptInput): CompiledPromptResult {
     logoIsOutsideBrandAssets: resolvedLogo.isOutsideBrandAssets,
     logoSvgHasPngAlternative: resolvedLogo.svgHasPngAlternative,
     brandColours,
+    contentType: input.contentType,
   });
 
   for (const issue of promptLint.issues) {
@@ -1070,17 +1118,17 @@ export function compilePrompt(input: CompilePromptInput): CompiledPromptResult {
     inlineFullPrompt: documentInlinePrompt,
     bodyContent: isDocumentLike(input.outputProfile.outputType) ? bodySource : "",
     bodyChunks,
-    fullPrompt: productionPrompt,
+    fullPrompt: documentAttachmentPrompt,
   };
 
   const debugPrompt = [
     "DEBUG PROMPT VIEW",
     `Selected Context:\nBrand: ${input.brandLabel}\nProject: ${input.projectLabel}\nContent: ${input.contentLabel}\nContent type: ${input.contentType}\nOutput: ${input.outputProfile.label}\nLogo asset: ${resolvedLogoAsset || "[None]"}\nLogo source: ${resolvedLogo.source}\nBackground theme: ${resolvedBackgroundTheme.label}`,
     `Prompt Fidelity:\nScore: ${promptLint.fidelityScore}/100\nIssues:\n${promptLint.issues.length ? promptLint.issues.map((issue) => `- ${issue.severity.toUpperCase()} ${issue.code}: ${issue.message}`).join("\n") : "None"}`,
-    `Source Preview:\nHeader Text:\n${resolvedHeaderText || "[None]"}\n\nFooter Text:\n${resolvedFooterText || "[None]"}\n\nLogo Asset:\n${resolvedLogoAsset || "[None]"}\n\nVisible Text:\n${visibleText || "[None]"}\n\nBody Content:\n${bodySource || "[None]"}\n\nGuidance:\n${[intent, imageBrief, optionalNotes, contentConstraints].filter(Boolean).join("\n\n") || "[None]"}`,
+    `Source Preview:\nDetected Sections:\n${detectedSections.length ? detectedSections.join(", ") : "[None]"}\n\nIgnored Legacy Sections:\n${ignoredLegacySections.length ? ignoredLegacySections.join(", ") : "[None]"}\n\nHeader Text:\n${resolvedHeaderText || "[None]"}\n\nFooter Text:\n${resolvedFooterText || "[None]"}\n\nLogo Asset:\n${resolvedLogoAsset || "[None]"}\n\nVisible Text:\n${visibleText || "[None]"}\n\nCover Page Content:\n${coverPageContent || "[None]"}\n\nTable of Contents:\n${tableOfContentsContent || "[None]"}\n\nBody Content:\n${bodySource || "[None]"}\n\nGuidance:\n${[intent, imageBrief, optionalNotes, contentConstraints].filter(Boolean).join("\n\n") || "[None]"}`,
     `Compact Production Prompt:\n${compactPrompt}`,
     `Expanded Rule Blocks:\n${expandedRuleBlocks.join("\n\n") || "[None]"}`,
-    `Full Source Rules:\nBrand Rules:\n${input.brandRules || "[None]"}\n\nProject Rules:\n${input.projectRules || "[None]"}\n\nBrand Header Rules:\n${input.headerRules || "[None]"}\n\nProject Header Rules:\n${input.projectHeaderRules || "[None]"}\n\nBrand Footer Rules:\n${input.footerRules || "[None]"}\n\nProject Footer Rules:\n${input.projectFooterRules || "[None]"}\n\nBrand Logo Rules:\n${input.logoRules || "[None]"}\n\nProject Logo Rules:\n${input.projectLogoRules || "[None]"}\n\nTypography Rules:\n${input.typographyRules || "[None]"}\n\nVisual Rules:\n${input.visualRules || "[None]"}\n\nDocument Rules:\n${input.documentRules || "[None]"}\n\nTable Rules:\n${input.tableRules || "[None]"}`,
+    `Full Source Rules:\nBrand Rules:\n${input.brandRules || "[None]"}\n\nProject Rules:\n${input.projectRules || "[None]"}\n\nBrand Header Rules:\n${input.headerRules || "[None]"}\n\nProject Header Rules:\n${input.projectHeaderRules || "[None]"}\n\nBrand Footer Rules:\n${input.footerRules || "[None]"}\n\nProject Footer Rules:\n${input.projectFooterRules || "[None]"}\n\nBrand Logo Rules:\n${input.logoRules || "[None]"}\n\nProject Logo Rules:\n${input.projectLogoRules || "[None]"}\n\nTypography Rules:\n${input.typographyRules || "[None]"}\n\nVisual Rules:\n${input.visualRules || "[None]"}\n\nBrand Document Rules:\n${input.documentRules || "[None]"}\n\nProject Document Rules:\n${input.projectDocumentRules || "[None]"}\n\nTable Rules:\n${input.tableRules || "[None]"}`,
     `Dynamic Layout Plan:\n${JSON.stringify(dynamicLayoutPlan, null, 2)}`,
     `Render Contract:\n${JSON.stringify(renderContract, null, 2)}`,
     `Warnings:\n${warnings.length ? warnings.map((warning) => `- ${warning}`).join("\n") : "None"}`,
@@ -1105,12 +1153,17 @@ export function compilePrompt(input: CompilePromptInput): CompiledPromptResult {
     fidelityScore: promptLint.fidelityScore,
     promptPreview: {
       visibleText,
+      linkedinPostText,
       bodyContent: isDocumentLike(input.outputProfile.outputType) ? bodySource : "",
       headerText: resolvedHeaderText,
       footerText: resolvedFooterText,
       brandColours,
       logoAsset: resolvedLogoAsset || "",
       backgroundTheme: resolvedBackgroundTheme.label,
+      detectedSections,
+      ignoredLegacySections,
+      coverPageContent,
+      tableOfContentsContent,
       guidance: [intent, imageBrief, postBrief, keyPoints, callToAction, optionalNotes, contentConstraints]
         .filter(Boolean)
         .join("\n\n"),

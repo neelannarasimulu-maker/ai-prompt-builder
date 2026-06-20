@@ -12,11 +12,12 @@ function visualFile(input: Partial<GeneratedContentFile>): GeneratedContentFile 
     id: input.id || "v1",
     filename: input.filename || "01-demo.png",
     displayName: input.displayName || "01 demo",
-    relativePath: input.relativePath || "content/projects/demo/generated-content/visuals/Version 1.0/01-demo.png",
-    generatedRelativePath: input.generatedRelativePath || "visuals/Version 1.0/01-demo.png",
+    relativePath: input.relativePath || "content/projects/demo/visuals/default-visual-set/_generated/v001/01-demo.png",
+    generatedRelativePath: input.generatedRelativePath || "visuals/default-visual-set/_generated/v001/01-demo.png",
     category: input.category || "visuals",
+    contentSet: input.contentSet || "default-visual-set",
     versionLabel: input.versionLabel,
-    fileUrl: input.fileUrl || "/project-generated-content/content/projects/demo/generated-content/visuals/Version 1.0/01-demo.png",
+    fileUrl: input.fileUrl || "/project-generated-content/content/projects/demo/visuals/default-visual-set/_generated/v001/01-demo.png",
     fileType: input.fileType || "image",
     sizeBytes: input.sizeBytes || 1024,
     modifiedAt: input.modifiedAt || "2026-06-12T00:00:00.000Z",
@@ -36,7 +37,9 @@ describe("ChatGPT RPA helpers", () => {
       "Only image outputs can run through ChatGPT visual automation.",
       "A compiled prompt is required.",
       "Project folder is required.",
+      "Content set is required.",
       "Output filename is required.",
+      "Output profile is required.",
       "Resolved logo asset is required.",
       "Target version folder is required.",
     ]);
@@ -44,27 +47,27 @@ describe("ChatGPT RPA helpers", () => {
 
   it("chooses the active visual version or newest generated visual version", () => {
     expect(getDefaultRpaVersionLabel({
-      selectedGeneratedVersion: "Version 1.1",
+      selectedGeneratedVersion: "v002",
       generatedFiles: [],
-    })).toBe("Version 1.1");
+    })).toBe("v002");
 
     expect(getDefaultRpaVersionLabel({
       selectedGeneratedVersion: "",
       generatedFiles: [
-        visualFile({ versionLabel: "Version 1.0" }),
-        visualFile({ id: "v2", versionLabel: "Version 1.2" }),
+        visualFile({ versionLabel: "v001" }),
+        visualFile({ id: "v2", versionLabel: "v002" }),
       ],
-    })).toBe("Version 1.2");
+    })).toBe("v003");
 
     expect(getDefaultRpaVersionLabel({
       selectedGeneratedVersion: "Unversioned",
       generatedFiles: [],
-    })).toBe("Version 1.0");
+    })).toBe("v001");
   });
 
   it("normalizes target version folders and output filenames", () => {
-    expect(normalizeRpaVersionLabel("Version 1.0/unsafe")).toBe("Version 1.0-unsafe");
-    expect(normalizeRpaVersionLabel("Unversioned")).toBe("Version 1.0");
+    expect(normalizeRpaVersionLabel("Version 1.0/unsafe")).toBe("v001");
+    expect(normalizeRpaVersionLabel("Unversioned")).toBe("v001");
     expect(normalizeRpaImageFilename("01-slide.png.png")).toBe("01-slide.png");
     expect(normalizeRpaImageFilename("02-slide")).toBe("02-slide.png");
     expect(normalizeRpaImageFilename("03-slide.JPG")).toBe("03-slide.jpg");

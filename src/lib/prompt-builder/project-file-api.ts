@@ -26,7 +26,7 @@ export async function saveContentSourceFile(
   path: string,
   content: string
 ): Promise<SaveContentResponse> {
-  const response = await fetch("/api/content/save", {
+  const response = await mainAppFetch("/api/content/save", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -38,7 +38,7 @@ export async function saveContentSourceFile(
 }
 
 export async function listGeneratedOutputs(): Promise<GeneratedOutputFile[]> {
-  const response = await fetch("/api/outputs/list");
+  const response = await mainAppFetch("/api/outputs/list");
   const payload = (await response.json()) as ListOutputsResponse;
 
   if (!payload.ok) {
@@ -53,3 +53,4 @@ export function formatFileSize(sizeBytes: number): string {
   if (sizeBytes < 1024 * 1024) return `${(sizeBytes / 1024).toFixed(1)} KB`;
   return `${(sizeBytes / (1024 * 1024)).toFixed(1)} MB`;
 }
+import { mainAppFetch } from "./main-app-api";

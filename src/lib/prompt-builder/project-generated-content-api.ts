@@ -9,12 +9,7 @@ export type GeneratedContentCategory =
   | "all"
   | "visuals"
   | "documents"
-  | "pdfs"
-  | "linkedin-posts"
-  | "prompts"
-  | "backgrounds"
-  | "final-renders"
-  | "other";
+  | "linkedin";
 
 export type GeneratedContentFile = {
   id: string;
@@ -23,6 +18,7 @@ export type GeneratedContentFile = {
   relativePath: string;
   generatedRelativePath: string;
   category: GeneratedContentCategory;
+  contentSet: string;
   versionLabel?: string;
   fileUrl: string;
   fileType: "image" | "pdf" | "document" | "presentation" | "text" | "other";
@@ -63,6 +59,13 @@ export type ExportGeneratedContentResponse = {
   error?: string;
 };
 
+export type MasterFrameMetadata = {
+  outputProfileId: string;
+  headerText: string;
+  footerText: string;
+  logoAsset: string;
+};
+
 export const generatedContentCategories: Array<{
   id: GeneratedContentCategory;
   label: string;
@@ -70,20 +73,15 @@ export const generatedContentCategories: Array<{
 }> = [
   { id: "all", label: "All generated content", folder: "" },
   { id: "visuals", label: "Visuals", folder: "visuals" },
-  { id: "backgrounds", label: "Backgrounds", folder: "backgrounds" },
-  { id: "final-renders", label: "Final Renders", folder: "final-renders" },
   { id: "documents", label: "Documents", folder: "documents" },
-  { id: "pdfs", label: "PDFs", folder: "pdfs" },
-  { id: "linkedin-posts", label: "LinkedIn Posts", folder: "linkedin-posts" },
-  { id: "prompts", label: "Prompts", folder: "prompts" },
-  { id: "other", label: "Other", folder: "other" },
+  { id: "linkedin", label: "LinkedIn", folder: "linkedin" },
 ];
 
 export async function saveContentSourceFile(
   path: string,
   content: string
 ): Promise<SaveContentResponse> {
-  const response = await fetch("/api/content/save", {
+  const response = await mainAppFetch("/api/content/save", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -97,6 +95,7 @@ export async function saveContentSourceFile(
 export async function listProjectGeneratedContent(input: {
   projectFolder: string;
   category?: GeneratedContentCategory;
+  contentSet?: string;
 }): Promise<{
   generatedContentRoot: string;
   files: GeneratedContentFile[];
@@ -104,9 +103,10 @@ export async function listProjectGeneratedContent(input: {
   const params = new URLSearchParams({
     projectFolder: input.projectFolder,
     category: input.category || "all",
+    ...(input.contentSet ? { contentSet: input.contentSet } : {}),
   });
 
-  const response = await fetch(`/api/generated-content/list?${params.toString()}`);
+  const response = await mainAppFetch(`/api/generated-content/list?${params.toString()}`);
   const payload = (await response.json()) as ListGeneratedContentResponse;
 
   if (!payload.ok) {
@@ -115,7 +115,7 @@ export async function listProjectGeneratedContent(input: {
 
   return {
     generatedContentRoot: payload.generatedContentRoot || "",
-    files: payload.files || [],
+    files: (payload.files || []).map((file) => ({ ...file, fileUrl: mainAppAssetUrl(file.fileUrl) })),
   };
 }
 
@@ -125,6 +125,8 @@ export async function uploadProjectGeneratedContent(input: {
   file: File;
   targetFilename?: string;
   versionLabel?: string;
+  contentSet: string;
+  masterFrame?: MasterFrameMetadata;
 }): Promise<UploadGeneratedContentResponse> {
   const arrayBuffer = await input.file.arrayBuffer();
   const bytes = new Uint8Array(arrayBuffer);
@@ -136,7 +138,7 @@ export async function uploadProjectGeneratedContent(input: {
 
   const dataBase64 = btoa(binary);
 
-  const response = await fetch("/api/generated-content/upload", {
+  const response = await mainAppFetch("/api/generated-content/upload", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -147,16 +149,40 @@ export async function uploadProjectGeneratedContent(input: {
       filename: input.file.name,
       targetFilename: input.targetFilename,
       versionLabel: input.versionLabel,
+      contentSet: input.contentSet,
+      masterFrame: input.masterFrame,
       dataBase64,
     }),
   });
 
-  return response.json() as Promise<UploadGeneratedContentResponse>;
+  const payload = await response.json() as UploadGeneratedContentResponse;
+  return { ...payload, fileUrl: payload.fileUrl ? mainAppAssetUrl(payload.fileUrl) : payload.fileUrl };
+}
+
+export async function renderProjectDocument(input: {
+  projectFolder: string;
+  outputProfileId: "a4_document_portrait" | "a4_pdf_portrait";
+  outputFilename: string;
+  title: string;
+  markdown: string;
+  headerText: string;
+  footerText: string;
+  logoAsset: string;
+  contentSet: string;
+}): Promise<UploadGeneratedContentResponse> {
+  const response = await mainAppFetch("/api/generated-content/render-document", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(input),
+  });
+  const payload = await response.json() as UploadGeneratedContentResponse;
+  return { ...payload, fileUrl: payload.fileUrl ? mainAppAssetUrl(payload.fileUrl) : payload.fileUrl };
 }
 
 export async function getProjectGeneratedContentFolder(input: {
   projectFolder: string;
   category: Exclude<GeneratedContentCategory, "all">;
+  contentSet: string;
 }): Promise<{
   folder: string;
   generatedContentRoot: string;
@@ -164,13 +190,14 @@ export async function getProjectGeneratedContentFolder(input: {
   const params = new URLSearchParams({
     projectFolder: input.projectFolder,
     category: input.category,
+    contentSet: input.contentSet,
   });
 
-  const response = await fetch(`/api/generated-content/folder?${params.toString()}`);
+  const response = await mainAppFetch(`/api/generated-content/folder?${params.toString()}`);
   const payload = (await response.json()) as GeneratedContentFolderResponse;
 
   if (!payload.ok || !payload.folder) {
-    throw new Error(payload.error || "Could not resolve generated-content folder.");
+    throw new Error(payload.error || "Could not resolve the content-set output folder.");
   }
 
   return {
@@ -184,8 +211,11 @@ export async function exportProjectGeneratedContent(input: {
   fileIds: string[];
   format: "pptx" | "pdf";
   outputFilename?: string;
+  category: Exclude<GeneratedContentCategory, "all">;
+  contentSet: string;
+  versionLabel?: string;
 }): Promise<ExportGeneratedContentResponse> {
-  const response = await fetch("/api/generated-content/export", {
+  const response = await mainAppFetch("/api/generated-content/export", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -193,7 +223,8 @@ export async function exportProjectGeneratedContent(input: {
     body: JSON.stringify(input),
   });
 
-  return response.json() as Promise<ExportGeneratedContentResponse>;
+  const payload = await response.json() as ExportGeneratedContentResponse;
+  return { ...payload, fileUrl: payload.fileUrl ? mainAppAssetUrl(payload.fileUrl) : payload.fileUrl };
 }
 
 export function formatFileSize(sizeBytes: number): string {
@@ -207,17 +238,15 @@ export function generatedCategoryForProfile(input: {
   profileId: string;
   contentType?: string;
 }): Exclude<GeneratedContentCategory, "all"> {
+  if (input.profileId.includes("linkedin") || input.contentType === "linkedin") return "linkedin";
   if (input.outputType === "image") return "visuals";
-  if (input.outputType === "pdf") return "pdfs";
-  if (input.outputType === "document") return "documents";
+  if (input.outputType === "pdf" || input.outputType === "document") return "documents";
   if (
-    input.profileId.includes("linkedin") ||
-    input.contentType === "linkedin-posts"
+    input.contentType === "linkedin"
   ) {
-    return "linkedin-posts";
+    return "linkedin";
   }
-  if (input.profileId.includes("prompt")) return "prompts";
-  return "other";
+  return "documents";
 }
 
 export function stripDuplicateExtensions(filename: string): string {
@@ -251,13 +280,13 @@ export function getGeneratedFileDisplayName(file: Pick<GeneratedContentFile, "fi
 
 export function getGeneratedFileVersionLabel(generatedRelativePath: string): string | undefined {
   const segments = generatedRelativePath.replace(/\\/g, "/").split("/");
-  const version = segments.find((segment) => /^version\s+\d+(?:\.\d+)?$/i.test(segment.trim()));
+  const version = segments.find((segment) => /^v\d{3,}$/i.test(segment.trim()));
   return version?.trim();
 }
 
 export function getGeneratedVersionSortValue(versionLabel: string): number {
   if (versionLabel === "Unversioned") return -1;
-  const match = versionLabel.match(/(\d+(?:\.\d+)?)/);
+  const match = versionLabel.match(/(\d+)/);
   return match ? Number(match[1]) : 0;
 }
 
@@ -268,3 +297,4 @@ export function enrichGeneratedContentFile(file: GeneratedContentFile): Generate
     versionLabel: file.versionLabel || getGeneratedFileVersionLabel(file.generatedRelativePath),
   };
 }
+import { mainAppAssetUrl, mainAppFetch } from "./main-app-api";

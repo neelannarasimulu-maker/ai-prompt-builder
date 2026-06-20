@@ -37,6 +37,7 @@ export type SolveLayoutInput = {
   sections: ParsedSections;
   requestedLayoutPresetId?: string;
   requestedBackgroundPresetId?: string;
+  requestedDocumentBackgroundPresetId?: string;
 };
 
 function containsAny(haystack: string, needles: string[]): boolean {
@@ -44,7 +45,36 @@ function containsAny(haystack: string, needles: string[]): boolean {
   return needles.some((needle) => lower.includes(needle));
 }
 
+function isDocumentOutput(outputType: SolveLayoutInput["outputType"]): boolean {
+  return outputType === "document" || outputType === "pdf";
+}
+
+function normalizeDocumentBackgroundPresetId(id?: string): string {
+  if (!id || id === "auto") return "auto_brand_document";
+  if (id === "clean_document") return "clean_white_form";
+  return id;
+}
+
+function normalizeDocumentLayoutPresetId(id?: string): string | undefined {
+  if (!id || id === "auto") return undefined;
+  if (["brand_formatted_document", "document_template", "legal_document", "commercial_document"].includes(id)) {
+    return id;
+  }
+  return undefined;
+}
+
 function detectContentKind(input: SolveLayoutInput, semantic: SemanticVisibleTextAnalysis): string {
+  if (isDocumentOutput(input.outputType)) {
+    const body = getSection(input.sections, "Body Content", "Document Body Content", "Body");
+    const rules = getSection(input.sections, "Document Output Rules");
+    const combined = [input.contentLabel, input.contentType, body, rules].join(" ");
+
+    if (containsAny(combined, ["template", "blank fields", "completion fields", "checkbox", "scoring values"])) return "document_template";
+    if (containsAny(combined, ["agreement", "novation", "contract", "terms", "schedule"])) return "legal_document";
+    if (containsAny(combined, ["pricing", "commercial", "fees", "rate", "cost"])) return "commercial_document";
+    return "document";
+  }
+
   const visibleText = getSection(input.sections, "Visible Text");
   const combined = [
     input.contentLabel,
@@ -53,20 +83,25 @@ function detectContentKind(input: SolveLayoutInput, semantic: SemanticVisibleTex
     getSection(input.sections, "Image Brief"),
   ].join(" ");
 
+  if (containsAny(combined, ["import market", "export market", "trade flow", "trade route", "supplying south africa"])) return "trade_flow";
+  if (containsAny(combined, ["statistic:", "market size", "market share", "addressable market"])) return "market_statistics";
+  if (containsAny(combined, ["market opportunity", "market position", "market demand", "participation economies"])) return "market_opportunity";
   if (containsAny(combined, ["business overview", "start coordinating action", "visibility to orchestration"])) return "opening_overview";
   if (containsAny(combined, ["operating problem", "fragmented execution", "operational drag", "disconnected systems"])) return "problem";
   if (containsAny(combined, ["control loop", "signals are identified", "risks are prioritised", "ownership is assigned"])) return "control_loop";
   if (containsAny(combined, ["core capabilities", "capability", "capabilities", "modules"])) return "capability_map";
   if (containsAny(combined, ["ai-assisted", "prioritise", "recommended actions", "operational noise"])) return "ai_priority";
-  if (containsAny(combined, ["business outcomes", "manual follow-up", "service reliability", "measurable operational performance"])) return "outcomes";
+  if (containsAny(combined, ["business outcomes"])) return "outcomes";
+  if (containsAny(combined, ["forecasting and replenishment"])) return "forecasting";
+  if (containsAny(combined, ["inventory control"])) return "inventory";
   if (containsAny(combined, ["forecasting", "replenishment", "planning horizon", "demand patterns"])) return "forecasting";
-  if (containsAny(combined, ["inventory control", "stock movement", "expiry", "working capital", "cash tied"])) return "inventory";
+  if (containsAny(combined, ["stock movement", "expiry", "working capital", "cash tied"])) return "inventory";
+  if (containsAny(combined, ["manual follow-up", "service reliability", "measurable operational performance"])) return "outcomes";
   if (containsAny(combined, ["supplier coordination", "order journey", "request", "dispatch", "receiving"])) return "supplier_journey";
   if (containsAny(combined, ["cross-industry", "use cases", "pharmacies", "healthcare", "agriculture", "warehousing"])) return "industry_constellation";
   if (containsAny(combined, ["operating layer", "sits between", "system replacement", "platform role", "without forcing"])) return "operating_layer";
   if (containsAny(combined, ["governance", "accountability", "auditability", "escalation", "closure"])) return "governance";
   if (containsAny(combined, ["call to action", "next step", "contact", "start with"])) return "cta";
-
   switch (semantic.pattern) {
     case "agenda":
       return "agenda";
@@ -123,6 +158,11 @@ function defaultLayoutForKind(kind: string, density: TextDensityAnalysis): strin
     case "flywheel": return "circular_control_loop";
     case "ecosystem": return "industry_ecosystem_map";
     case "comparison": return "comparison_split";
+    case "market_opportunity": return density.level === "heavy" || density.level === "very_heavy"
+      ? "executive_market_brief"
+      : "market_opportunity_snapshot";
+    case "market_statistics": return density.lineCount <= 8 ? "three_signal_summary" : "stat_card_grid";
+    case "trade_flow": return "trade_flow_map";
     case "progress": return "governance_timeline";
     case "problem": return "converging_signal_map";
     case "cta": return "cta_action_path";
@@ -159,6 +199,9 @@ function defaultBackgroundForKind(kind: string, density: TextDensityAnalysis): s
     case "flywheel": return "balanced_brand_gradient";
     case "ecosystem": return "rich_gradient_frame";
     case "comparison": return "balanced_light_dark";
+    case "market_opportunity": return "rich_gradient_frame";
+    case "market_statistics": return "executive_depth_panels";
+    case "trade_flow": return "balanced_brand_gradient";
     case "progress": return "executive_depth_panels";
     case "problem": return "brand_control_room_soft";
     case "cta": return "balanced_in_between_depth";
@@ -210,7 +253,7 @@ function zonesForLayout(layoutId: string, density: TextDensityAnalysis, semantic
     return [header, { name: "date-columns", x: 7, y: 15, width: 86, height: 10, purpose: "Timeline dates as columns using Date fields." }, { name: "roadmap-lanes", x: 6, y: 28, width: 88, height: 60, purpose: "Lane fields as horizontal lanes; Item fields placed within their lane." }, footer];
   }
 
-  if (layoutId === "dense_text_editorial" || density.level === "very_heavy") {
+  if (layoutId === "dense_text_editorial") {
     return [header, { name: "editorial-content", x: 6, y: 13, width: 88, height: 76, purpose: "Large structured text area with compact cards and section bands." }, footer];
   }
 
@@ -283,25 +326,30 @@ function zonesForLayout(layoutId: string, density: TextDensityAnalysis, semantic
 
 export function solveDynamicLayout(input: SolveLayoutInput): DynamicLayoutPlan {
   const visibleText = getSection(input.sections, "Visible Text");
-  const semantic = parseSemanticVisibleText(visibleText);
-  const density = analyseVisibleText(visibleText);
+  const bodyText = getSection(input.sections, "Body Content", "Document Body Content", "Body");
+  const isDocument = isDocumentOutput(input.outputType);
+  const semantic = isDocument ? parseSemanticVisibleText("") : parseSemanticVisibleText(visibleText);
+  const density = analyseVisibleText(isDocument ? bodyText || visibleText : visibleText);
   const contentKind = detectContentKind(input, semantic);
 
   const hintedLayout = sectionIdFromHint(getSection(input.sections, "Layout Hint"));
   const hintedBackground = sectionIdFromHint(getSection(input.sections, "Background Hint"));
 
-  const layoutPresetId =
-    input.requestedLayoutPresetId && input.requestedLayoutPresetId !== "auto"
+  const layoutPresetId = isDocument
+    ? normalizeDocumentLayoutPresetId(hintedLayout) || "brand_formatted_document"
+    : input.requestedLayoutPresetId && input.requestedLayoutPresetId !== "auto"
       ? input.requestedLayoutPresetId
       : hintedLayout || defaultLayoutForKind(contentKind, density);
 
-  const backgroundPresetId =
+  const backgroundPresetId = isDocument
+    ? normalizeDocumentBackgroundPresetId(input.requestedDocumentBackgroundPresetId || hintedBackground)
+    :
     input.requestedBackgroundPresetId && input.requestedBackgroundPresetId !== "auto"
       ? input.requestedBackgroundPresetId
       : hintedBackground || defaultBackgroundForKind(contentKind, density);
 
-  const zones = zonesForLayout(layoutPresetId, density, semantic);
-  const warnings = [...density.warnings];
+  const zones = isDocument ? [] : zonesForLayout(layoutPresetId, density, semantic);
+  const warnings = isDocument ? [] : [...density.warnings];
 
   if (semantic.hasStructuredFields && semantic.itemCount > 0) {
     warnings.push(

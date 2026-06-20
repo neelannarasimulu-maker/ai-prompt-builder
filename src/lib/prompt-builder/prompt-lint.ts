@@ -1,5 +1,6 @@
 import { backgroundPresets } from "./background-presets";
 import { getSection, type ParsedSections } from "./content-sections";
+import { documentBackgroundPresets } from "./document-background-presets";
 import { layoutPresets } from "./layout-presets";
 import type { DynamicLayoutPlan } from "./layout-solver";
 import type { OutputProfileLike, OutputType } from "./prompt-compiler";
@@ -14,6 +15,13 @@ export type PromptLintResult = {
   issues: PromptLintIssue[];
   fidelityScore: number;
 };
+
+const documentLayoutPresetIds = new Set([
+  "brand_formatted_document",
+  "document_template",
+  "legal_document",
+  "commercial_document",
+]);
 
 function addIssue(
   issues: PromptLintIssue[],
@@ -56,6 +64,7 @@ export function lintCompiledPrompt(input: {
   logoIsOutsideBrandAssets?: boolean;
   logoSvgHasPngAlternative?: boolean;
   brandColours?: string;
+  contentType?: string;
 }): PromptLintResult {
   const issues: PromptLintIssue[] = [];
   const outputType: OutputType = input.outputProfile.outputType;
@@ -63,6 +72,7 @@ export function lintCompiledPrompt(input: {
   const imageBrief = getSection(input.sections, "Image Brief");
   const bodyContent = getSection(input.sections, "Body Content", "Document Body Content", "Body");
   const bodySource = bodyContent || visibleText;
+  const isVisualSlide = input.outputProfile.id === "landscape_image_16_9";
 
   if (outputType === "image") {
     if (!visibleText) addIssue(issues, "error", "missing-visible-text", "Image output is missing Visible Text.");
@@ -81,25 +91,82 @@ export function lintCompiledPrompt(input: {
     }
   }
 
+  if (isVisualSlide) {
+    if (["linkedin", "documents"].includes(input.contentType?.toLowerCase() || "")) {
+      addIssue(issues, "error", "visual-slide-content-mismatch", "A visual slide output must use visual-slide content rather than LinkedIn or document content.");
+    }
+    if (/\b(?:linkedin|4:5|social post|accompanying post)\b/i.test(input.productionPrompt)) {
+      addIssue(issues, "error", "visual-slide-linkedin-language", "Visual slide prompt contains LinkedIn or social-post instructions.");
+    }
+    if (/\b(?:a4|word document|pdf document|page break|table of contents|document rules)\b/i.test(input.productionPrompt)) {
+      addIssue(issues, "error", "visual-slide-document-language", "Visual slide prompt contains document-specific instructions.");
+    }
+    if (/\b\d{3,5}\s*[xX]\s*\d{3,5}\b|\b[xy]=\d+|reserved body area|logo (?:pixel )?box/i.test(input.productionPrompt)) {
+      addIssue(issues, "error", "visual-slide-pixel-dimensions", "Visual slide prompt contains pixel dimensions or coordinates.");
+    }
+    if (countOccurrences(input.productionPrompt, "Generation mode:") !== 1) {
+      addIssue(issues, "error", "visual-slide-generation-mode", "Visual slide prompt must contain exactly one generation mode.");
+    }
+    if (/BODY ARTWORK ONLY|APP-RENDERED MASTER FRAME|DIRECT CHATGPT FALLBACK/i.test(input.productionPrompt)) {
+      addIssue(issues, "error", "visual-slide-mixed-modes", "Visual slide prompt contains legacy or conflicting generation-mode sections.");
+    }
+    if (/\b(?:lorem ipsum|placeholder text|tbd|insert (?:title|text|copy) here)\b/i.test(visibleText)) {
+      addIssue(issues, "error", "placeholder-visible-text", "Exact Visible Text contains placeholder wording.");
+    }
+
+    const marketLayouts = new Set([
+      "market_opportunity_snapshot",
+      "stat_card_grid",
+      "trade_flow_map",
+      "executive_market_brief",
+      "three_signal_summary",
+    ]);
+    if (["market_opportunity", "market_statistics", "trade_flow"].includes(input.plan.contentKind) && !marketLayouts.has(input.plan.layoutPresetId)) {
+      addIssue(issues, "warning", "market-layout-mismatch", `Layout preset ${input.plan.layoutPresetId} does not match ${input.plan.contentKind} content.`);
+    }
+  }
+
   if (outputType === "document" || outputType === "pdf") {
     if (!bodySource) addIssue(issues, "error", "missing-body-content", "Document/PDF output is missing Body Content or Visible Text.");
-    if (
-      !input.productionPrompt.includes("BEGIN SOURCE MARKDOWN") &&
-      !input.productionPrompt.includes("Attached source file workflow")
-    ) {
-      addIssue(issues, "warning", "document-source-not-delimited", "Document prompt does not include inline source Markdown or an attached-source workflow.");
+    const requiredHeadings = ["TASK", "SOURCE OF TRUTH", "BRAND + PROJECT", "OUTPUT PROFILE", "DOCUMENT RENDERING RULES", "FINAL OUTPUT REQUIREMENT"];
+    for (const heading of requiredHeadings) {
+      if (!input.productionPrompt.includes(`${heading}\n`)) addIssue(issues, "error", "missing-document-section", `Document prompt is missing ${heading}.`);
+    }
+    if (!input.productionPrompt.includes("Use the supplied Markdown source as the exact document source of truth.")) {
+      addIssue(issues, "error", "missing-document-source-rule", "Document prompt is missing the exact Markdown source-of-truth rule.");
+    }
+    if (/EXCLUSIONS|DIRECT CHATGPT FALLBACK ONLY|The production app owns|Attached source file workflow|Image brief|On-image text|LinkedIn Post Text|16:9/i.test(input.productionPrompt)) {
+      addIssue(issues, "error", "document-prompt-contamination", "Document prompt contains fallback, visual, LinkedIn or implementation wording.");
+    }
+    if (outputType === "document" && (/\.pdf\b|PDF document/i.test(input.productionPrompt))) {
+      addIssue(issues, "error", "word-prompt-mentions-pdf", "Word document prompt also mentions PDF output.");
+    }
+    if (outputType === "pdf" && (/\.docx\b|Word document/i.test(input.productionPrompt))) {
+      addIssue(issues, "error", "pdf-prompt-mentions-word", "PDF document prompt also mentions Word output.");
     }
     if (!input.productionPrompt.includes("Brand colours:")) {
       addIssue(issues, "warning", "missing-brand-colours", "Document/PDF prompt is missing explicit brand colours.");
     }
   }
 
-  if (!layoutPresets.some((preset) => preset.id === input.plan.layoutPresetId)) {
-    addIssue(issues, "error", "invalid-layout", `Unknown layout preset: ${input.plan.layoutPresetId}.`);
+  if (outputType === "image") {
+    if (!layoutPresets.some((preset) => preset.id === input.plan.layoutPresetId)) {
+      addIssue(issues, "error", "invalid-layout", `Unknown layout preset: ${input.plan.layoutPresetId}.`);
+    }
+
+    if (!backgroundPresets.some((preset) => preset.id === input.plan.backgroundPresetId)) {
+      addIssue(issues, "error", "invalid-background", `Unknown background preset: ${input.plan.backgroundPresetId}.`);
+    }
   }
 
-  if (!backgroundPresets.some((preset) => preset.id === input.plan.backgroundPresetId)) {
-    addIssue(issues, "error", "invalid-background", `Unknown background preset: ${input.plan.backgroundPresetId}.`);
+  if (outputType === "document" || outputType === "pdf") {
+    if (!documentLayoutPresetIds.has(input.plan.layoutPresetId)) {
+      addIssue(issues, "error", "invalid-document-layout", `Unknown document layout preset: ${input.plan.layoutPresetId}.`);
+    }
+
+    if (!documentBackgroundPresets.some((preset) => preset.id === input.plan.backgroundPresetId)) {
+      addIssue(issues, "error", "invalid-document-background", `Unknown document page treatment: ${input.plan.backgroundPresetId}.`);
+    }
   }
 
   if (input.plan.density.wordCount > 240 && outputType === "image") {

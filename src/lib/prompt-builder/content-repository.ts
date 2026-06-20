@@ -25,8 +25,8 @@ import ss360Slide10 from "../../../content/projects/supplysync360/executive-over
 import ss360Slide11 from "../../../content/projects/supplysync360/executive-overview/slides/11-governance-accountability.md?raw";
 import ss360Slide12 from "../../../content/projects/supplysync360/executive-overview/slides/12-business-outcomes.md?raw";
 import ss360Slide13 from "../../../content/projects/supplysync360/executive-overview/slides/13-executive-call-to-action.md?raw";
-import ss360Doc01 from "../../../content/projects/supplysync360/executive-overview/documents/01-word-client-opportunity-brief.md?raw";
-import ss360Doc02 from "../../../content/projects/supplysync360/executive-overview/documents/02-a4-pdf-investor-one-pager.md?raw";
+import ss360Doc01 from "../../../content/projects/supplysync360/executive-overview/documents/default-document-pack/01-word-client-opportunity-brief.md?raw";
+import ss360Doc02 from "../../../content/projects/supplysync360/executive-overview/documents/default-document-pack/02-a4-pdf-investor-one-pager.md?raw";
 import ss360Linkedin01 from "../../../content/projects/supplysync360/executive-overview/linkedin/01-linkedin-launch-post.md?raw";
 import ss360Linkedin02 from "../../../content/projects/supplysync360/executive-overview/linkedin/02-linkedin-image-visual.md?raw";
 import thengaSlide01 from "../../../content/projects/thenga/investor-canvas/slides/01-investment-thesis.md?raw";

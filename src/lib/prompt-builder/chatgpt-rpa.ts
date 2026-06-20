@@ -4,6 +4,7 @@ import {
   stripDuplicateExtensions,
   type GeneratedContentFile,
 } from "./project-generated-content-api";
+import { getNextVersionFolder, normalizeVersionFolder } from "./content-set-paths";
 
 export type ChatGptRpaStepStatus = "queued" | "running" | "waiting" | "complete" | "failed";
 
@@ -44,8 +45,12 @@ export type ChatGptRpaStartInput = {
   outputType: string;
   prompt: string;
   projectFolder: string;
+  contentSet: string;
   outputFilename: string;
+  outputProfileId: string;
   logoAsset: string;
+  headerText: string;
+  footerText: string;
   versionLabel: string;
 };
 
@@ -56,9 +61,7 @@ export type ChatGptRpaJobResponse = {
 };
 
 export function normalizeRpaVersionLabel(input?: string): string {
-  const value = input?.trim();
-  if (!value || value === "Unversioned") return "Version 1.0";
-  return value.replace(/[\\/:*?"<>|]+/g, "-").replace(/\s+/g, " ").slice(0, 80);
+  return normalizeVersionFolder(input);
 }
 
 export function getDefaultRpaVersionLabel(input: {
@@ -81,7 +84,7 @@ export function getDefaultRpaVersionLabel(input: {
     return sortValue || a.localeCompare(b);
   });
 
-  return normalizeRpaVersionLabel(versions[0]);
+  return getNextVersionFolder(versions);
 }
 
 export function normalizeRpaImageFilename(filename: string, fallbackExtension = ".png"): string {
@@ -96,14 +99,16 @@ export function validateRpaStartInput(input: Partial<ChatGptRpaStartInput>): str
   if (input.outputType !== "image") errors.push("Only image outputs can run through ChatGPT visual automation.");
   if (!input.prompt?.trim()) errors.push("A compiled prompt is required.");
   if (!input.projectFolder?.trim()) errors.push("Project folder is required.");
+  if (!input.contentSet?.trim()) errors.push("Content set is required.");
   if (!input.outputFilename?.trim()) errors.push("Output filename is required.");
+  if (!input.outputProfileId?.trim()) errors.push("Output profile is required.");
   if (!input.logoAsset?.trim()) errors.push("Resolved logo asset is required.");
   if (!input.versionLabel?.trim()) errors.push("Target version folder is required.");
   return errors;
 }
 
 export async function startChatGptRpaJob(input: ChatGptRpaStartInput): Promise<ChatGptRpaJobResponse> {
-  const response = await fetch("/api/chatgpt-rpa/jobs", {
+  const response = await mainAppFetch("/api/chatgpt-rpa/jobs", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(input),
@@ -112,20 +117,21 @@ export async function startChatGptRpaJob(input: ChatGptRpaStartInput): Promise<C
 }
 
 export async function getChatGptRpaJob(jobId: string): Promise<ChatGptRpaJobResponse> {
-  const response = await fetch(`/api/chatgpt-rpa/jobs/${encodeURIComponent(jobId)}`);
+  const response = await mainAppFetch(`/api/chatgpt-rpa/jobs/${encodeURIComponent(jobId)}`);
   return response.json() as Promise<ChatGptRpaJobResponse>;
 }
 
 export async function resumeChatGptRpaJob(jobId: string): Promise<ChatGptRpaJobResponse> {
-  const response = await fetch(`/api/chatgpt-rpa/jobs/${encodeURIComponent(jobId)}/resume`, {
+  const response = await mainAppFetch(`/api/chatgpt-rpa/jobs/${encodeURIComponent(jobId)}/resume`, {
     method: "POST",
   });
   return response.json() as Promise<ChatGptRpaJobResponse>;
 }
 
 export async function cancelChatGptRpaJob(jobId: string): Promise<ChatGptRpaJobResponse> {
-  const response = await fetch(`/api/chatgpt-rpa/jobs/${encodeURIComponent(jobId)}/cancel`, {
+  const response = await mainAppFetch(`/api/chatgpt-rpa/jobs/${encodeURIComponent(jobId)}/cancel`, {
     method: "POST",
   });
   return response.json() as Promise<ChatGptRpaJobResponse>;
 }
+import { mainAppFetch } from "./main-app-api";

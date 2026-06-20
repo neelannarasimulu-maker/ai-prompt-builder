@@ -72,6 +72,66 @@ export const layoutPresets: LayoutPreset[] = [
       "Use a full-width hero composition with a bold title stack over a vibrant branded operational scene. Place supporting text in translucent highlight bands and avoid a simple text-left/image-right split.",
   },
   {
+    id: "centre_stage_diagram",
+    label: "Centre-Stage Diagram",
+    prompt: "Use one central explanatory diagram with exact-text callouts arranged around it in a clear visual hierarchy.",
+  },
+  {
+    id: "vertical_journey",
+    label: "Vertical Journey",
+    prompt: "Arrange stages in a top-to-bottom journey with clear progression, compact milestones and protected text zones.",
+  },
+  {
+    id: "horizontal_timeline",
+    label: "Horizontal Timeline",
+    prompt: "Arrange milestones from left to right with distinct stages, dates or phases and concise supporting callouts.",
+  },
+  {
+    id: "outcome_wall",
+    label: "Outcome Wall",
+    prompt: "Use a structured wall of outcome statements with strong grouping, hierarchy and one clear concluding takeaway.",
+  },
+  {
+    id: "signal_funnel",
+    label: "Signal Funnel",
+    prompt: "Show many inputs narrowing through a prioritisation stage into a small set of clear actions or outcomes.",
+  },
+  {
+    id: "layered_architecture",
+    label: "Layered Architecture",
+    prompt: "Use stacked system, platform and action layers with clear relationships and restrained connecting paths.",
+  },
+  {
+    id: "executive_summary_grid",
+    label: "Executive Summary Grid",
+    prompt: "Use a compact summary grid with one message per cell, clear hierarchy and consistent alignment.",
+  },
+  {
+    id: "market_opportunity_snapshot",
+    label: "Market Opportunity Snapshot",
+    prompt: "Use an executive market-opportunity composition with one dominant opportunity statement, clearly grouped market signals and a concise strategic implication.",
+  },
+  {
+    id: "stat_card_grid",
+    label: "Stat Card Grid",
+    prompt: "Use a disciplined grid of prominent statistic cards with short supporting context. Preserve every supplied value exactly and do not invent charts or metrics.",
+  },
+  {
+    id: "trade_flow_map",
+    label: "Trade Flow Map",
+    prompt: "Use a geographic trade-flow composition connecting named origins and markets with restrained routes, volume callouts and a clear commercial takeaway.",
+  },
+  {
+    id: "executive_market_brief",
+    label: "Executive Market Brief",
+    prompt: "Use an editorial executive-market layout with a strong headline, compact evidence panels and one protected strategic-insight zone.",
+  },
+  {
+    id: "three_signal_summary",
+    label: "Three-Signal Summary",
+    prompt: "Use three balanced signal panels beneath one market headline, giving each supplied signal equal clarity and a shared concluding implication.",
+  },
+  {
     id: "converging_signal_map",
     label: "Converging Signal Map",
     prompt:
