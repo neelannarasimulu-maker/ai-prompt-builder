@@ -5,6 +5,13 @@ export type SaveContentResponse = {
   error?: string;
 };
 
+export type CopyContentFileResponse = {
+  ok: boolean;
+  path?: string;
+  filename?: string;
+  error?: string;
+};
+
 export type GeneratedContentCategory =
   | "all"
   | "visuals"
@@ -90,6 +97,18 @@ export async function saveContentSourceFile(
   });
 
   return response.json() as Promise<SaveContentResponse>;
+}
+
+export async function copyContentFileToClipboard(path: string): Promise<CopyContentFileResponse> {
+  const response = await mainAppFetch("/api/clipboard/file", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ path }),
+  });
+
+  return response.json() as Promise<CopyContentFileResponse>;
 }
 
 export async function listProjectGeneratedContent(input: {

@@ -91,6 +91,11 @@ describe("workflow feature helpers", () => {
     const source = readFileSync(new URL("../src/main.tsx", import.meta.url), "utf8");
 
     expect(source).toContain("Copy prompt");
+    expect(source).toContain("Copy logo");
+    expect(source).toContain("Copy document MD");
+    expect(source).toContain("Copy visual MD");
+    expect(source).toContain("copyContentFileToClipboard(selectedContentEntry.path)");
+    expect(source).toContain("copyContentFileToClipboard(resolvedLogoAssetPath)");
     expect(source).toContain("Copy LinkedIn Post Text");
     expect(source).not.toContain("Copy prompt + open ChatGPT");
     expect(source).not.toContain("className=\"export-control-card\"");

@@ -112,7 +112,7 @@ In the event of any conflict or inconsistency between the definitions contained 
 
 1.6 Where terms in this TD differ from those in the MSA, the terms of this TD shall prevail solely within the scope of the applicable Service Stream.
 
-1.7 Data privacy, data sharing and data processing terms are governed by the MSA and, where entered into by the Parties, the separate RainFin Data Sharing Agreement.
+1.7 Data privacy, data sharing and data processing terms are governed by the MSA and, where entered into by the Parties, the separate RainFin Data Processing Agreement.
 
 1.8 Customer support terms are governed by the MSA and, where entered into by the Parties, the separate RainFin Customer Support Agreement.
 

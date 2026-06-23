@@ -436,7 +436,7 @@ describe("compilePrompt", () => {
     });
 
     expect(result.productionPrompt).toContain("Supply Chains Need Closure");
-    expect(result.productionPrompt).toContain("Typography for this output:");
+    expect(result.productionPrompt).toContain("LINKEDIN ASSET RENDERING RULES");
     expect(result.productionPrompt).toContain("44-64 px");
     expect(result.productionPrompt).not.toContain("This caption is pasted into LinkedIn");
     expect(result.productionPrompt).not.toContain("Asset Format: 4:5 portrait");
@@ -495,8 +495,8 @@ describe("compilePrompt", () => {
       markdownOverride: "## Intent\nCreate a LinkedIn asset.\n\n## Visible Text\nTitle: One image\n\n## LinkedIn Post Text\nCaption only.\n\n## Image Brief\nCreate one clear 4:5 social visual.",
     });
 
-    expect(carousel.productionPrompt).toContain("Resolved asset mode from Image Brief: create a set of separate 4:5 images");
-    expect(single.productionPrompt).toContain("Resolved asset mode from Image Brief: create one finished 4:5 image");
+    expect(carousel.productionPrompt).toContain("Asset mode: separate carousel images");
+    expect(single.productionPrompt).toContain("Asset mode: single image");
     expect(outputProfiles.filter((profile) => profile.id.startsWith("linkedin_")).map((profile) => profile.id)).toEqual(["linkedin_asset_4_5"]);
   });
 

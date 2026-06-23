@@ -1,34 +1,18 @@
----
-content_type: document
-brand: RainFin
-project: New Client Contracting
-content_name: RainFin Master Services Agreement Template
-template_name: Master Services Agreement
-version: v1.1
-source_of_truth: body_content
-logo_asset: content/brands/rainfin/assets/rainfin-logo.png
----
-
 ## Intent
-
 Create a brand-formatted Word or PDF Master Services Agreement from this central Markdown source file.
 
 ## Layout Hint
-
 brand_formatted_document
 
 ## Background Hint
-
 clean_document
 
 ## Visible Text
-
 Title: RAINFIN
 Subtitle: Master Services Agreement
 Body: Framework agreement for RainFin services to a Client
 
 ## Cover Page Content
-
 Logo: Use the official RainFin logo as a large centred logo.
 
 Title: Master Services Agreement
@@ -44,33 +28,31 @@ Version: v1.1
 Date: [insert date]
 
 ## Table of Contents
-
-1. [Parties](#parties)  
-2. [Introduction and Background](#1-introduction-and-background)  
-3. [Definitions and Interpretation](#2-definitions-and-interpretation)  
-4. [Framework of the Agreement](#3-framework-of-the-agreement)  
-5. [Services](#4-services)  
-6. [Duration](#5-duration)  
-7. [Termination](#6-termination)  
-8. [Service Provider Obligations](#7-service-provider-obligations)  
-9. [Client Obligations](#8-client-obligations)  
-10. [Fees and Payment Terms](#9-fees-and-payment-terms)  
-11. [Representatives](#10-representatives)  
-12. [Data Privacy and Protection](#11-data-privacy-and-protection)  
-13. [Audits](#12-audits)  
-14. [Materials Used in Public Relations](#13-materials-used-in-public-relations)  
-15. [Subcontracting](#14-subcontracting)  
-16. [Intellectual Property](#15-intellectual-property)  
-17. [Confidentiality](#16-confidentiality)  
-18. [Indemnification](#17-indemnification)  
-19. [Limitation of Liability](#18-limitation-of-liability)  
-20. [Warranties](#19-warranties)  
-21. [Breach](#20-breach)  
-22. [General](#21-general)  
-23. [Signatures](#22-signatures)  
+1. [Parties](#parties)
+2. [Introduction and Background](#1-introduction-and-background)
+3. [Definitions and Interpretation](#2-definitions-and-interpretation)
+4. [Framework of the Agreement](#3-framework-of-the-agreement)
+5. [Services](#4-services)
+6. [Duration](#5-duration)
+7. [Termination](#6-termination)
+8. [Service Provider Obligations](#7-service-provider-obligations)
+9. [Client Obligations](#8-client-obligations)
+10. [Fees and Payment Terms](#9-fees-and-payment-terms)
+11. [Representatives](#10-representatives)
+12. [Data Privacy and Protection](#11-data-privacy-and-protection)
+13. [Audits](#12-audits)
+14. [Materials Used in Public Relations](#13-materials-used-in-public-relations)
+15. [Subcontracting](#14-subcontracting)
+16. [Intellectual Property](#15-intellectual-property)
+17. [Confidentiality](#16-confidentiality)
+18. [Indemnification](#17-indemnification)
+19. [Limitation of Liability](#18-limitation-of-liability)
+20. [Warranties](#19-warranties)
+21. [Breach](#20-breach)
+22. [General](#21-general)
+23. [Signatures](#22-signatures)
 
 ## Body Content
-
 # Master Services Agreement
 
 **Framework agreement for RainFin services to a Client**
@@ -79,16 +61,16 @@ Date: [insert date]
 
 This **Master Services Agreement** is entered into between:
 
-**RAINFIN (PTY) LTD**  
-Registration number: 2008/029213/07  
-Address: First Floor Suite 5a, Waterstone Office Park, Cnr Main Road & R44, Somerset West, Western Cape, 7130  
+**RAINFIN (PTY) LTD**
+Registration number: 2008/029213/07
+Address: First Floor Suite 5a, Waterstone Office Park, Cnr Main Road & R44, Somerset West, Western Cape, 7130
 the “Service Provider” or “RainFin”
 
 and
 
-**[CLIENT LEGAL ENTITY NAME]**  
-Registration number: [●]  
-Address: [●]  
+**[CLIENT LEGAL ENTITY NAME]**
+Registration number: [●]
+Address: [●]
 the “Client” or “[CLIENT SHORT NAME]”
 
 Together, the “Parties”.
@@ -105,7 +87,7 @@ Together, the “Parties”.
 
 1.4.1 **RainFin Master Services Agreement**;
 
-1.4.2 **RainFin Data Sharing Agreement**;
+1.4.2 **RainFin Data Processing Agreement**;
 
 1.4.3 **RainFin Customer Support Agreement**; and
 
@@ -269,7 +251,7 @@ Together, the “Parties”.
 
 11.1 Each Party shall comply with applicable Data Protection Laws.
 
-11.2 The Parties shall enter into a separate RainFin Data Sharing Agreement where required for the relevant Client engagement.
+11.2 The Parties shall enter into a separate RainFin Data Processing Agreement where required for the relevant Client engagement.
 
 11.3 RainFin shall process Personal Information only for purposes connected with providing the services, complying with Applicable Laws, supporting the Client, operating the RainFin Platform and performing obligations under this Agreement or the applicable RainFin Data Sharing Agreement.
 
@@ -429,14 +411,14 @@ Signed at __________________________ on this ______ day of __________________ 20
 
 For and on behalf of **RAINFIN (PTY) LTD**
 
-Name: __________________________  
-Title: __________________________  
+Name: __________________________
+Title: __________________________
 Signature: _______________________
 
 Signed at __________________________ on this ______ day of __________________ 20____.
 
 For and on behalf of **[CLIENT LEGAL ENTITY NAME]**
 
-Name: __________________________  
-Title: __________________________  
+Name: __________________________
+Title: __________________________
 Signature: _______________________

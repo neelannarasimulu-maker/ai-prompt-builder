@@ -13,10 +13,6 @@ import { documentBackgroundPresets, getDocumentBackgroundPreset } from "./lib/pr
 import { backgroundThemes, type BackgroundTheme } from "./lib/prompt-builder/background-themes";
 import { layoutPresets, getLayoutPreset } from "./lib/prompt-builder/layout-presets";
 import { compilePrompt } from "./lib/prompt-builder/prompt-compiler";
-import {
-  applyDynamicContentTagsToMarkdown,
-  generateDynamicContentTags,
-} from "./lib/prompt-builder/dynamic-content-tags";
 import { parseMarkdownSections } from "./lib/prompt-builder/content-sections";
 import { isIgnoredContentPath, parseContentSetPath } from "./lib/prompt-builder/content-set-paths";
 import {
@@ -34,6 +30,7 @@ import {
 } from "./lib/prompt-builder/chatgpt-assist";
 import {
   basenameWithoutExtension,
+  copyContentFileToClipboard,
   copyableFilename,
   enrichGeneratedContentFile,
   exportProjectGeneratedContent,
@@ -893,26 +890,6 @@ function App() {
     }
   }
 
-  function handleApplyDynamicTags() {
-    if (!selectedBrand || !selectedProject || !selectedOutputProfile || !selectedContentEntry) return;
-
-    const sections = parseMarkdownSections(editableMarkdown);
-    const update = generateDynamicContentTags({
-      brandLabel: selectedBrand.label,
-      projectLabel: selectedProject.label,
-      contentLabel: selectedContentEntry.label,
-      contentType: selectedContentType,
-      outputType: selectedOutputProfile.outputType,
-      sections,
-      selectedLayoutPresetId,
-      selectedBackgroundPresetId,
-    });
-
-    const updated = applyDynamicContentTagsToMarkdown(editableMarkdown, update);
-    setEditableMarkdown(updated);
-    showToast(`Dynamic tags updated: ${update.summary.slice(0, 3).join(" | ")}`, "info");
-  }
-
   function handleDownloadPromptFile() {
     const promptFilename = replaceExtension(customOutputFilename || suggestedOutputFilename, "txt");
     const blob = new Blob([compiled.productionPrompt], { type: "text/plain;charset=utf-8" });
@@ -942,7 +919,39 @@ function App() {
       : isDocumentLike
         ? "Document MD"
         : "Source MD";
-    await copyToClipboard(editableMarkdown, label);
+    if (!selectedContentEntry) {
+      showToast(`No ${label.toLowerCase()} source file is selected.`, "warning");
+      return;
+    }
+
+    try {
+      const response = await copyContentFileToClipboard(selectedContentEntry.path);
+      if (!response.ok) {
+        showToast(response.error || `Could not copy the ${label} file.`, "warning");
+        return;
+      }
+      showToast(`${label} file copied. Paste it into ChatGPT to attach it.`);
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : `Could not copy the ${label} file.`, "warning");
+    }
+  }
+
+  async function handleCopyLogoFile() {
+    if (!resolvedLogoAssetPath) {
+      showToast("No logo file is resolved for this content.", "warning");
+      return;
+    }
+
+    try {
+      const response = await copyContentFileToClipboard(resolvedLogoAssetPath);
+      if (!response.ok) {
+        showToast(response.error || "Could not copy the logo file.", "warning");
+        return;
+      }
+      showToast("Logo file copied. Paste it into ChatGPT to attach it.");
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : "Could not copy the logo file.", "warning");
+    }
   }
 
   async function handleCopyLinkedInPostText() {
@@ -1611,8 +1620,9 @@ function App() {
     }
   }
 
+  const resolvedLogoAssetPath = compiled.promptPreview.logoAsset || selectedProjectLogoAsset || selectedBrand?.logoAsset || "";
   const logoPreviewPath =
-    brandLogoAssets.find((asset) => asset.path === (compiled.promptPreview.logoAsset || selectedProjectLogoAsset))?.previewPath ||
+    brandLogoAssets.find((asset) => asset.path === resolvedLogoAssetPath)?.previewPath ||
     selectedBrand?.logoPreviewPath ||
     selectedBrand?.logoPath ||
     `/brands/${selectedBrand?.id}/${selectedBrand?.id}-logo.svg`;
@@ -2253,11 +2263,10 @@ function App() {
           <div className="panel-title panel-title-row">
             <div>
               <h2>Content Source</h2>
-              <p>Visible Text stays human-controlled. Other tags can be regenerated dynamically.</p>
+              <p>Review and edit the markdown source used to generate this content.</p>
             </div>
             <div className="button-row">
               {isContentDirty && <span className="dirty-pill">Unsaved</span>}
-              <button className="secondary-button" type="button" onClick={handleApplyDynamicTags}>Update dynamic tags</button>
               <button className="secondary-button" type="button" onClick={() => setEditableMarkdown(selectedContentEntry?.raw ?? "")}>Reset</button>
               <button className="primary-button" type="button" disabled={!localWritesAvailable} onClick={handleSaveContentSource}>Save source</button>
             </div>
@@ -2294,6 +2303,14 @@ function App() {
 
           <div className="action-strip streamlined-actions">
             <button className="primary-button" type="button" onClick={() => copyToClipboard(compiled.productionPrompt, "Prompt")}>Copy prompt</button>
+            {workflowMode === "run" && (
+              <button className="secondary-button" type="button" disabled={!localWritesAvailable || !resolvedLogoAssetPath} onClick={handleCopyLogoFile}>Copy logo</button>
+            )}
+            {workflowMode === "run" && (
+              <button className="secondary-button" type="button" disabled={!localWritesAvailable || !selectedContentEntry} onClick={handleCopySourceMarkdownFile}>
+                {isDocumentLike ? "Copy document MD" : "Copy visual MD"}
+              </button>
+            )}
             {workflowMode === "run" && isDocumentLike && (
               <button className="secondary-button" type="button" disabled={!localWritesAvailable || isRenderingDocument} onClick={handleRenderLockedDocument}>
                 {isRenderingDocument ? "Rendering…" : `Render locked ${selectedOutputProfile.outputType === "pdf" ? "PDF" : "Word document"}`}
@@ -2304,22 +2321,15 @@ function App() {
             )}
           </div>
 
-          {(isDocumentLike || selectedOutputProfile.outputType === "image") && (
+          {isDocumentLike && (
             <div className="doc-workflow-card simplified-doc-workflow">
               <div>
-                <strong>{isDocumentLike ? "Document MD controls" : "Visual MD controls"}</strong>
-                <p>{isDocumentLike
-                  ? "Use Download document MD when you want to attach the source separately. The copied prompt is still run-ready and uses Body Content for the document."
-                  : "Copy the visual MD when you want the source content separately. The compiled prompt stays visual-only and does not duplicate semantic analysis into the production prompt."}</p>
+                <strong>Document MD download</strong>
+                <p>Download the source file when you need a saved fallback instead of copying it directly from the Run actions.</p>
               </div>
 
               <div className="doc-workflow-actions compact-actions">
-                {isDocumentLike && (
-                  <button className="primary-button" type="button" onClick={handleDownloadDocumentMarkdownFile}>Download document MD</button>
-                )}
-                <button className={isDocumentLike ? "secondary-button" : "primary-button"} type="button" onClick={handleCopySourceMarkdownFile}>
-                  {isDocumentLike ? "Copy document MD" : "Copy visual MD"}
-                </button>
+                <button className="primary-button" type="button" onClick={handleDownloadDocumentMarkdownFile}>Download document MD</button>
               </div>
             </div>
           )}

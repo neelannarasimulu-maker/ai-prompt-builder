@@ -4,6 +4,7 @@ import fs from "node:fs";
 import crypto from "node:crypto";
 import os from "node:os";
 import path from "node:path";
+import { execFile } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import pptxgen from "pptxgenjs";
 import { PDFDocument } from "pdf-lib";
@@ -276,6 +277,33 @@ function sendJson(res: import("node:http").ServerResponse, status: number, paylo
   res.statusCode = status;
   res.setHeader("Content-Type", "application/json; charset=utf-8");
   res.end(JSON.stringify(payload, null, 2));
+}
+
+function copyFileToClipboard(filePath: string): Promise<void> {
+  if (process.platform !== "win32") {
+    throw new Error("Copying files to the clipboard is currently supported on Windows only.");
+  }
+
+  return new Promise((resolve, reject) => {
+    execFile(
+      "powershell.exe",
+      [
+        "-NoProfile",
+        "-NonInteractive",
+        "-Command",
+        "& { param([string]$filePath) Set-Clipboard -LiteralPath $filePath }",
+        filePath,
+      ],
+      { windowsHide: true },
+      (error, _stdout, stderr) => {
+        if (error) {
+          reject(new Error(stderr.trim() || error.message));
+          return;
+        }
+        resolve();
+      }
+    );
+  });
 }
 
 function slugSegment(value: string): string {
@@ -1245,6 +1273,49 @@ function localFilePlugin(): Plugin {
           sendJson(res, 500, {
             ok: false,
             error: error instanceof Error ? error.message : "Unknown save error.",
+          });
+        }
+      });
+
+      server.middlewares.use("/api/clipboard/file", async (req, res) => {
+        if (req.method !== "POST") {
+          sendJson(res, 405, { ok: false, error: "Method not allowed" });
+          return;
+        }
+
+        try {
+          const body = JSON.parse(await readRequestBody(req)) as { path?: string };
+          if (!body.path) {
+            sendJson(res, 400, { ok: false, error: "Expected a content file path." });
+            return;
+          }
+
+          const normalizedRelativePath = body.path.replace(/\\/g, "/");
+          const absolutePath = contentPathFromRelative(normalizedRelativePath);
+          if (!fs.existsSync(absolutePath) || !fs.statSync(absolutePath).isFile()) {
+            sendJson(res, 404, { ok: false, error: "The selected file does not exist." });
+            return;
+          }
+
+          const realContentRoot = fs.realpathSync(contentRoot);
+          const realFilePath = fs.realpathSync(absolutePath);
+          if (!isInsideRoot(realContentRoot, realFilePath)) {
+            sendJson(res, 400, { ok: false, error: "Refusing to copy a file outside content." });
+            return;
+          }
+
+          const allowedExtensions = new Set([".md", ".png", ".svg", ".jpg", ".jpeg", ".webp"]);
+          if (!allowedExtensions.has(path.extname(realFilePath).toLowerCase())) {
+            sendJson(res, 400, { ok: false, error: "Only Markdown and supported logo image files can be copied." });
+            return;
+          }
+
+          await copyFileToClipboard(realFilePath);
+          sendJson(res, 200, { ok: true, path: normalizedRelativePath, filename: path.basename(realFilePath) });
+        } catch (error) {
+          sendJson(res, 500, {
+            ok: false,
+            error: error instanceof Error ? error.message : "Could not copy the file to the clipboard.",
           });
         }
       });

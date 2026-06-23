@@ -34,6 +34,8 @@ import {
 } from "./document-prompt-parts";
 import { lintCompiledPrompt, type PromptLintResult } from "./prompt-lint";
 import { resolvePromptLogoAsset } from "./logo-resolution";
+import { buildLinkedInProductionPrompt } from "./linkedin-prompt-template";
+import { getMasterFrameSpec } from "./master-frame";
 import {
   buildVisualProductionPrompt,
   type VisualGenerationMode,
@@ -321,13 +323,6 @@ function sanitizeLinkedInVisibleText(input: string): string {
     .filter((line) => !/^\s*(?:asset\s+(?:format|frame)|format)\s*:/i.test(line))
     .join("\n")
     .trim();
-}
-
-function resolveLinkedInAssetInstruction(imageBrief: string): string {
-  const requestsMultipleImages = /\bcarousel\b|\b(?:separate|multiple)\s+(?:4:5\s+)?(?:portrait\s+)?images?\b|\b[2-9]\s*[- ]image\b|\bone image per (?:page|panel)\b|\bpage\s+[2-9]\b/i.test(imageBrief);
-  return requestsMultipleImages
-    ? "Resolved asset mode from Image Brief: create a set of separate 4:5 images, one per requested page or panel; do not combine them into one image."
-    : "Resolved asset mode from Image Brief: create one finished 4:5 image.";
 }
 
 function backgroundModeSummary(theme: BackgroundThemeDefinition): string {
@@ -983,9 +978,34 @@ export function compilePrompt(input: CompilePromptInput): CompiledPromptResult {
 
   const resolvedVisualTone = extractLabelValue(input.projectRules, "Tone") || usefulSnippet(input.visualRules, 24);
   const resolvedThemeStyle = buildShortVisualBrandStyle(input.visualRules);
+  const linkedInFrame = linkedInImage ? getMasterFrameSpec(input.outputProfile.id) : undefined;
+
+  const linkedInProductionPrompt = linkedInImage
+    ? buildLinkedInProductionPrompt({
+        brandName: input.brandLabel,
+        projectName: input.projectLabel,
+        contentTitle: input.contentLabel,
+        assetFormat: getOutputLabel(input.outputProfile).replace(/^LinkedIn\s+/i, ""),
+        canvas: linkedInFrame ? `${linkedInFrame.width}x${linkedInFrame.height}px` : "use the selected output profile dimensions",
+        useCase: input.outputProfile.useCase || "LinkedIn campaign asset",
+        workflow: compactSentence(extractLabelValue(input.projectRules, "Workflow")) || "linkedin_campaign",
+        audience: compactSentence(extractLabelValue(input.projectRules, "Audience")) || `LinkedIn audiences for ${input.projectLabel}.`,
+        purpose: compactSentence(extractLabelValue(input.projectRules, "Purpose")) || `Create the selected ${input.projectLabel} LinkedIn asset faithfully.`,
+        tone: compactSentence(extractLabelValue(input.projectRules, "Tone")) || "Professional, clear, credible and aligned to the selected brand.",
+        brandColours,
+        visualTone: resolvedVisualTone || "Professional, clear and trust-building.",
+        themeStyle: resolvedThemeStyle,
+        layoutPresetId: resolvedLayoutPreset.id,
+        backgroundPresetId: resolvedBackgroundPreset.id,
+        safeMargins: input.safeMargins || input.outputProfile.safeMargins || "approximately 6% from every edge",
+        intent,
+        imageBrief,
+        exactVisibleText: visibleText,
+      })
+    : "";
 
   const visualProductionPrompt = input.outputProfile.outputType === "image"
-    ? buildVisualProductionPrompt({
+    ? linkedInProductionPrompt || buildVisualProductionPrompt({
         brandName: input.brandLabel,
         projectName: input.projectLabel,
         contentTitle: input.contentLabel,
@@ -999,11 +1019,7 @@ export function compilePrompt(input: CompilePromptInput): CompiledPromptResult {
         fontRules: outputTypographyRules,
         fontStyle: buildVisualFontStyle(input.typographyRules),
         generationMode: input.generationMode || "direct_chatgpt",
-        isLinkedIn: linkedInImage,
-        outputInstruction: [
-          getOutputInstruction(input.outputProfile),
-          linkedInImage ? resolveLinkedInAssetInstruction(imageBrief) : "",
-        ].filter(Boolean).join("\n"),
+        outputInstruction: getOutputInstruction(input.outputProfile),
         headerText: resolvedHeaderText,
         footerText: resolvedFooterText,
         logoPath: resolvedLogoAsset || "",

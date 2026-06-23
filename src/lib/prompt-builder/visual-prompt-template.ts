@@ -22,7 +22,6 @@ export type VisualPromptTemplateInput = {
   bodySizeRange?: string;
   smallLabelSizeRange?: string;
   generationMode?: VisualGenerationMode;
-  isLinkedIn?: boolean;
   outputInstruction?: string;
   headerText: string;
   footerText: string;
@@ -104,20 +103,14 @@ function buildLandscapeSlidePrompt(input: VisualPromptTemplateInput): string {
 
 function buildLegacyImagePrompt(input: VisualPromptTemplateInput): string {
   const frame = getMasterFrameSpec(input.profileId);
-  const outputChrome = input.isLinkedIn
-    ? block("ASSET RULES", [
-        `Safe margins: ${input.safeMargins}`,
-        `Typography for this output:\n${input.fontRules}`,
-        "Do not add a logo, header bar, footer bar, document chrome, asset-frame labels or workflow metadata.",
-      ])
-    : block("APP-RENDERED MASTER FRAME", [
+  const outputChrome = block("APP-RENDERED MASTER FRAME", [
         `Final canvas: ${frame?.width || "profile"}x${frame?.height || "profile"} px.`,
         frame ? `Reserved body area: x=${frame.body.x}, y=${frame.body.y}, width=${frame.body.width}, height=${frame.body.height} px.` : "Use the profile body area.",
         `Typography for this output:\n${input.fontRules}`,
         "The app—not the image model—will render the locked header bar, footer bar, official logo, header text and footer text after generation.",
         "Do not draw, imitate, place or reserve a visible placeholder for the logo.",
       ]);
-  const directFallback = input.isLinkedIn ? "" : block("DIRECT CHATGPT FALLBACK ONLY", [
+  const directFallback = block("DIRECT CHATGPT FALLBACK ONLY", [
     `If explicitly producing a direct final image without app post-processing, extend the artwork to ${frame?.width || "the final profile width"}x${frame?.height || "the final profile height"}px, keep a clear top zone for header text "${input.headerText}" and a clear bottom zone for footer text "${input.footerText}".`,
     "Do not draw or recreate the logo; leave the configured logo bounding-box area visually clear.",
     "This is fallback guidance only. The production workflow must use the app-rendered master frame.",
@@ -159,7 +152,6 @@ function buildLegacyImagePrompt(input: VisualPromptTemplateInput): string {
     ]),
     block("GUARDRAILS", [
       "Do not add unsupported claims, fake metrics, extra visible text, generic dashboards or clutter.",
-      input.isLinkedIn ? "Do not render LinkedIn Post Text, legacy Body Content, format labels or any caption copy in the image." : "",
       "Do not alter, omit, duplicate, rewrite or reorder the exact visible wording.",
       "Do not draw, distort, invent or place a logo. Return body artwork only; the app applies production chrome.",
     ]),
