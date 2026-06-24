@@ -10,17 +10,22 @@ const headings = [
   "FINAL OUTPUT REQUIREMENT",
 ];
 
+function transactionTemplate() {
+  const content = contentItems.find((item) =>
+    item.path.endsWith("content/projects/rainfin/client-contracting/documents/template-document-pack/rainfin-transaction-document-template.md")
+  );
+  if (!content) throw new Error("Missing RainFin transaction template test fixture.");
+  return content;
+}
+
 describe("document production prompt", () => {
   it("uses only the six-section contract for the RainFin transaction template", () => {
-    const content = contentItems.find((item) =>
-      item.path.endsWith("content/projects/rainfin/templates/documents/default-document-pack/rainfin-transaction-document-template.md")
-    );
-    expect(content).toBeTruthy();
+    const content = transactionTemplate();
 
     const result = compilePrompt({
-      brandId: content!.brandId,
-      projectId: content!.projectId,
-      contentId: content!.id,
+      brandId: content.brandId,
+      projectId: content.projectId,
+      contentId: content.id,
       outputProfileId: "a4_document_portrait",
     });
     const prompt = result.productionPrompt;
@@ -30,7 +35,7 @@ describe("document production prompt", () => {
     expect([...positions].sort((a, b) => a - b)).toEqual(positions);
     for (const heading of headings) expect(prompt.split(`${heading}\n`)).toHaveLength(2);
     expect(prompt).toContain("Brand: RainFin");
-    expect(prompt).toContain("Project: Templates");
+    expect(prompt).toContain("Project: Client Contracting");
     expect(prompt).toContain("Workflow: document_pack");
     expect(prompt).toContain("Audience: Business Clients that make use of services from Rainfin");
     expect(prompt).toContain("Purpose: A set of templates");
@@ -47,16 +52,17 @@ describe("document production prompt", () => {
   });
 
   it("keeps Word and PDF output requirements mutually exclusive", () => {
+    const content = transactionTemplate();
     const word = compilePrompt({
-      brandId: "supplysync360",
-      projectId: "executive-overview",
-      contentId: "ss360-doc-01",
+      brandId: content.brandId,
+      projectId: content.projectId,
+      contentId: content.id,
       outputProfileId: "a4_document_portrait",
     }).productionPrompt;
     const pdf = compilePrompt({
-      brandId: "supplysync360",
-      projectId: "executive-overview",
-      contentId: "ss360-doc-02",
+      brandId: content.brandId,
+      projectId: content.projectId,
+      contentId: content.id,
       outputProfileId: "a4_pdf_portrait",
     }).productionPrompt;
 

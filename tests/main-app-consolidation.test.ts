@@ -40,7 +40,7 @@ describe("single-process local app", () => {
   });
 
   it("exposes storage settings through same-origin main-app routes", () => {
-    const source = fs.readFileSync(path.join(root, "vite.config.ts"), "utf8");
+    const source = fs.readFileSync(path.join(root, "server/routes/storage-routes.ts"), "utf8");
     expect(source).toContain('"/api/storage/status"');
     expect(source).toContain('"/api/storage/settings"');
   });

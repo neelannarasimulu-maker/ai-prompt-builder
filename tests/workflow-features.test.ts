@@ -68,7 +68,7 @@ describe("workflow feature helpers", () => {
   it("preserves the compiled single prompt exactly before the batch-only addendum", () => {
     const single = compilePrompt({
       brandId: "supplysync360",
-      projectId: "executive-overview",
+      projectId: "brand-positioning",
       contentId: "ss360-slide-01",
       outputProfileId: "landscape_image_16_9",
     }).productionPrompt;
@@ -88,7 +88,16 @@ describe("workflow feature helpers", () => {
   });
 
   it("keeps workflow UI actions single-sourced in the workflow panel", () => {
-    const source = readFileSync(new URL("../src/main.tsx", import.meta.url), "utf8");
+    const source = [
+      readFileSync(new URL("../src/main.tsx", import.meta.url), "utf8"),
+      readFileSync(new URL("../src/features/prompt-builder/prompt-builder-app.tsx", import.meta.url), "utf8"),
+      readFileSync(new URL("../src/features/prompt-builder/controllers/prompt-builder-view.tsx", import.meta.url), "utf8"),
+      readFileSync(new URL("../src/features/prompt-builder/hooks/use-prompt-builder-controller.tsx", import.meta.url), "utf8"),
+      readFileSync(new URL("../src/features/prompt-builder/hooks/use-prompt-actions.ts", import.meta.url), "utf8"),
+      readFileSync(new URL("../src/features/prompt-builder/sections/prompt-actions-section.tsx", import.meta.url), "utf8"),
+      readFileSync(new URL("../src/features/prompt-builder/sections/prompt-header-section.tsx", import.meta.url), "utf8"),
+      readFileSync(new URL("../src/features/prompt-builder/sections/project-selection-section.tsx", import.meta.url), "utf8"),
+    ].join("\n");
 
     expect(source).toContain("Copy prompt");
     expect(source).toContain("Copy logo");

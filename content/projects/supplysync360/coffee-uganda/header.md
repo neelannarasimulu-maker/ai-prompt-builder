@@ -1,3 +1,3 @@
 # Project Header
 
-SupplySync360 | Uganda Coffee Market Assessment
+SupplySync360 | East Africa Coffee Market Assessment

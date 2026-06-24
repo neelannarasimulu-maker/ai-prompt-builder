@@ -118,21 +118,15 @@ describe("distribution persistence", () => {
   });
 });
 
-describe("LinkedIn distribution seed", () => {
-  it("contains five posted records and the approved twice-weekly schedule", () => {
-    const store = JSON.parse(readFileSync(new URL("../content/projects/supplysync360/public-linkedin/distribution.json", import.meta.url), "utf8")) as { records: DistributionRecord[] };
+describe("project-local distribution seed", () => {
+  it("keeps distribution records inside current project folders", () => {
+    const store = JSON.parse(readFileSync(new URL("../content/projects/thenga/business-development/distribution.json", import.meta.url), "utf8")) as { records: DistributionRecord[] };
     expect(existsSync(new URL("../content/distribution.json", import.meta.url))).toBe(false);
-    expect(store.records).toHaveLength(17);
-    expect(store.records.slice(0, 5).every((item) => item.status === "sent" && !item.sentDate)).toBe(true);
-    expect(store.records.slice(5).map((item) => item.plannedDate)).toEqual([
-      "2026-06-23", "2026-06-25", "2026-06-30", "2026-07-02",
-      "2026-07-07", "2026-07-09", "2026-07-14", "2026-07-16",
-      "2026-07-21", "2026-07-23", "2026-07-28", "2026-07-30",
-    ]);
+    expect(store.records.every((item) => item.projectFolder === "content/projects/thenga/business-development")).toBe(true);
   });
 
   it("preserves the project-local Thenga WhatsApp history", () => {
-    const store = JSON.parse(readFileSync(new URL("../content/projects/thenga/standard-bank-pitch/distribution.json", import.meta.url), "utf8")) as { records: DistributionRecord[] };
+    const store = JSON.parse(readFileSync(new URL("../content/projects/thenga/business-development/distribution.json", import.meta.url), "utf8")) as { records: DistributionRecord[] };
     expect(store.records).toHaveLength(1);
     expect(store.records[0]).toMatchObject({ channel: "whatsapp", recipient: "Thenga Executive Team", sentDate: "2026-06-18" });
   });

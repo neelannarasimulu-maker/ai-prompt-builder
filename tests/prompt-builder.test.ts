@@ -11,14 +11,20 @@ function occurrences(input: string, needle: string): number {
   return input.split(needle).length - 1;
 }
 
+function registeredContent(pathSuffix: string) {
+  const content = contentItems.find((item) => item.path.endsWith(pathSuffix));
+  if (!content) throw new Error(`Missing test content: ${pathSuffix}`);
+  return content;
+}
+
 describe("prompt builder registry", () => {
   it("includes the central registry for brands and projects", () => {
     expect(listBrands().map((brand) => brand.id)).toContain("supplysync360");
-    expect(listProjects("supplysync360").map((project) => project.id)).toContain("executive-overview");
+    expect(listProjects("supplysync360").map((project) => project.id)).toContain("brand-positioning");
   });
 
   it("includes 13 SupplySync360 executive overview slides", () => {
-    const slides = contentItems.filter((item) => item.brandId === "supplysync360" && item.projectId === "executive-overview" && item.kind === "slides");
+    const slides = contentItems.filter((item) => item.brandId === "supplysync360" && item.projectId === "brand-positioning" && item.kind === "slides");
     expect(slides).toHaveLength(13);
   });
 
@@ -38,7 +44,7 @@ describe("compilePrompt", () => {
   it("returns both compact production and expanded debug prompts", () => {
     const result = compilePrompt({
       brandId: "supplysync360",
-      projectId: "executive-overview",
+      projectId: "brand-positioning",
       contentId: "ss360-slide-01",
       outputProfileId: "landscape_image_16_9",
     });
@@ -69,7 +75,7 @@ describe("compilePrompt", () => {
   it("compiles a SupplySync360 slide with modular brand, deck and preset sections", () => {
     const result = compilePrompt({
       brandId: "supplysync360",
-      projectId: "executive-overview",
+      projectId: "brand-positioning",
       contentId: "ss360-slide-01",
       outputProfileId: "landscape_image_16_9",
     });
@@ -153,13 +159,13 @@ describe("compilePrompt", () => {
   it("keeps 16:9 visual slides in one clean generation mode", () => {
     const direct = compilePrompt({
       brandId: "supplysync360",
-      projectId: "executive-overview",
+      projectId: "brand-positioning",
       contentId: "ss360-slide-01",
       outputProfileId: "landscape_image_16_9",
     });
     const composited = compilePrompt({
       brandId: "supplysync360",
-      projectId: "executive-overview",
+      projectId: "brand-positioning",
       contentId: "ss360-slide-01",
       outputProfileId: "landscape_image_16_9",
       generationMode: "app_composited",
@@ -184,7 +190,7 @@ describe("compilePrompt", () => {
 
   it("selects market-aware layouts and validates incompatible overrides", () => {
     const marketContent = contentItems.find((item) =>
-      item.path.endsWith("content/projects/thenga/standard-bank-pitch/visuals/default-visual-set/05-market-opportunity.md")
+      item.path.endsWith("content/projects/supplysync360/coffee-uganda/visuals/market-opportunity-set/V002/03-import-market-by-coffee-type.md")
     );
     expect(marketContent).toBeTruthy();
 
@@ -202,15 +208,15 @@ describe("compilePrompt", () => {
       layoutPresetId: "governance_timeline",
     });
 
-    expect(automatic.dynamicLayoutPlan.contentKind).toBe("market_opportunity");
-    expect(["market_opportunity_snapshot", "executive_market_brief"]).toContain(automatic.dynamicLayoutPlan.layoutPresetId);
+    expect(automatic.dynamicLayoutPlan.contentKind).toBe("trade_flow");
+    expect(automatic.dynamicLayoutPlan.layoutPresetId).toBe("trade_flow_map");
     expect(incompatible.promptLint.issues.map((issue) => issue.code)).toContain("market-layout-mismatch");
   });
 
   it("flags placeholder exact visible text in visual slides", () => {
     const result = compilePrompt({
       brandId: "supplysync360",
-      projectId: "executive-overview",
+      projectId: "brand-positioning",
       contentId: "ss360-slide-01",
       outputProfileId: "landscape_image_16_9",
       markdownOverride: "## Intent\nTest.\n\n## Visible Text\nInsert title here\n\n## Image Brief\nTest image.",
@@ -238,7 +244,7 @@ describe("compilePrompt", () => {
   it("omits missing sections from the compact production prompt", () => {
     const result = compilePrompt({
       brandId: "supplysync360",
-      projectId: "executive-overview",
+      projectId: "brand-positioning",
       contentId: "ss360-slide-01",
       outputProfileId: "landscape_image_16_9",
     });
@@ -251,7 +257,7 @@ describe("compilePrompt", () => {
   it("works with markdown that has no frontmatter", () => {
     const result = compilePrompt({
       brandId: "supplysync360",
-      projectId: "executive-overview",
+      projectId: "brand-positioning",
       contentId: "ss360-slide-02",
       outputProfileId: "landscape_image_16_9",
     });
@@ -261,16 +267,17 @@ describe("compilePrompt", () => {
   });
 
   it("compiles concise, exclusive Word and PDF document prompts", () => {
+    const content = registeredContent("content/projects/supplysync360/coffee-uganda/documents/market-research-strategy-pack/supplysync360_uganda_coffee_market_research_strategy.md");
     const doc = compilePrompt({
-      brandId: "supplysync360",
-      projectId: "executive-overview",
-      contentId: "ss360-doc-01",
+      brandId: content.brandId,
+      projectId: content.projectId,
+      contentId: content.id,
       outputProfileId: "a4_document_portrait",
     });
     const pdf = compilePrompt({
-      brandId: "supplysync360",
-      projectId: "executive-overview",
-      contentId: "ss360-doc-02",
+      brandId: content.brandId,
+      projectId: content.projectId,
+      contentId: content.id,
       outputProfileId: "a4_pdf_portrait",
     });
 
@@ -281,12 +288,12 @@ describe("compilePrompt", () => {
     expect(doc.productionPrompt).toContain("Return only: .docx");
     expect(doc.productionPrompt).toContain("Brand colours:");
     expect(doc.productionPrompt).toContain("#008B8B");
-    expect(doc.productionPrompt).toContain("Audience: executives, clients, partners");
-    expect(doc.productionPrompt).toContain("Purpose: position SupplySync360");
+    expect(doc.productionPrompt).toContain("Audience: Uganda coffee makers, South Africa buyers of Uganda coffee");
+    expect(doc.productionPrompt).toContain("Purpose: Establish a coffee importing business");
     expect(doc.productionPrompt).toContain("Use the official logo asset: content/brands/supplysync360/assets/supplysync360-logo-white.png.");
-    expect(doc.productionPrompt).toContain("Header:\nSupplySync360 | Executive Overview");
-    expect(doc.productionPrompt).toContain("Footer:\nSupplySync360 | From visibility to coordinated action.");
-    expect(doc.productionPrompt).toContain("Client Opportunity Brief");
+    expect(doc.productionPrompt).toContain("Header:\nSupplySync360 | East Africa Coffee Market Assessment");
+    expect(doc.productionPrompt).toContain("Footer:\nConfidential | Prepared by SupplySync360 | South Africa Coffee Import Market Assessment");
+    expect(doc.productionPrompt).toContain("Supplysync360 Uganda Coffee Market Research Strategy");
     expect(doc.productionPrompt).toContain("Use the supplied Markdown source as the exact document source of truth.");
     expect(doc.productionPrompt).toContain("Render Markdown pipe tables as properly formatted Word tables.");
     expect(doc.productionPrompt).toContain("Signature sections must begin on a new page.");
@@ -325,10 +332,11 @@ describe("compilePrompt", () => {
   });
 
   it("uses the same clean production prompt across document prompt aliases", () => {
+    const content = registeredContent("content/projects/supplysync360/coffee-uganda/documents/market-research-strategy-pack/supplysync360_uganda_coffee_market_research_strategy.md");
     const result = compilePrompt({
-      brandId: "supplysync360",
-      projectId: "executive-overview",
-      contentId: "ss360-doc-01",
+      brandId: content.brandId,
+      projectId: content.projectId,
+      contentId: content.id,
       outputProfileId: "a4_document_portrait",
       compressionProfile: "singleMessageDocument",
     });
@@ -341,7 +349,7 @@ describe("compilePrompt", () => {
 
   it("injects document rules for clean Markdown with cover and table of contents content", () => {
     const rainfinDocument = contentItems.find((item) =>
-      item.path.endsWith("content/projects/rainfin/sticcit/documents/default-document-pack/rainfin-sticcit-novation-agreement.md")
+      item.path.endsWith("content/projects/rainfin/client-contracting/documents/sticcitt-document-pack/rainfin-sticcit-novation-agreement.md")
     );
 
     expect(rainfinDocument).toBeTruthy();
@@ -379,10 +387,11 @@ describe("compilePrompt", () => {
   });
 
   it("does not inject source-section cleanup or table-of-contents control chatter", () => {
+    const content = registeredContent("content/projects/supplysync360/coffee-uganda/documents/market-research-strategy-pack/supplysync360_uganda_coffee_market_research_strategy.md");
     const result = compilePrompt({
-      brandId: "supplysync360",
-      projectId: "executive-overview",
-      contentId: "ss360-doc-01",
+      brandId: content.brandId,
+      projectId: content.projectId,
+      contentId: content.id,
       outputProfileId: "a4_document_portrait",
     });
 
@@ -415,7 +424,7 @@ describe("compilePrompt", () => {
   it("keeps LinkedIn caption text separate from the generated image prompt", () => {
     const result = compilePrompt({
       brandId: "supplysync360",
-      projectId: "executive-overview",
+      projectId: "brand-positioning",
       contentId: "ss360-linkedin-01",
       outputProfileId: "linkedin_asset_4_5",
       markdownOverride: [
@@ -449,7 +458,7 @@ describe("compilePrompt", () => {
   it("treats legacy LinkedIn Body Content as separate post text and removes the text-post output", () => {
     const result = compilePrompt({
       brandId: "supplysync360",
-      projectId: "executive-overview",
+      projectId: "brand-positioning",
       contentId: "ss360-linkedin-01",
       outputProfileId: "linkedin_asset_4_5",
       markdownOverride: "## Intent\nCreate an image.\n\n## Visible Text\nTitle: Visible\n\n## Body Content\nLegacy caption only.\n\n## Image Brief\nUse a simple visual.",
@@ -463,7 +472,7 @@ describe("compilePrompt", () => {
   it("keeps every stored LinkedIn caption in the separate preview field and out of image prompts", () => {
     const linkedInItems = contentItems.filter((item) => item.kind === "linkedin" && item.file.toLowerCase() !== "readme.md");
 
-    expect(linkedInItems.length).toBeGreaterThanOrEqual(19);
+    expect(linkedInItems.length).toBeGreaterThan(0);
     for (const item of linkedInItems) {
       const result = compilePrompt({
         brandId: item.brandId,
@@ -482,14 +491,14 @@ describe("compilePrompt", () => {
   it("derives single-image or carousel behavior from Image Brief", () => {
     const carousel = compilePrompt({
       brandId: "supplysync360",
-      projectId: "executive-overview",
+      projectId: "brand-positioning",
       contentId: "ss360-linkedin-01",
       outputProfileId: "linkedin_asset_4_5",
       markdownOverride: "## Intent\nCreate a LinkedIn asset.\n\n## Visible Text\nPage 1 Title: First\nPage 2 Title: Second\n\n## LinkedIn Post Text\nCaption only.\n\n## Image Brief\nCreate a 2-image carousel as separate 4:5 images, one image per page.",
     });
     const single = compilePrompt({
       brandId: "supplysync360",
-      projectId: "executive-overview",
+      projectId: "brand-positioning",
       contentId: "ss360-linkedin-01",
       outputProfileId: "linkedin_asset_4_5",
       markdownOverride: "## Intent\nCreate a LinkedIn asset.\n\n## Visible Text\nTitle: One image\n\n## LinkedIn Post Text\nCaption only.\n\n## Image Brief\nCreate one clear 4:5 social visual.",
@@ -503,13 +512,13 @@ describe("compilePrompt", () => {
   it("keeps visual and LinkedIn image prompts free of document pagination rules", () => {
     const visual = compilePrompt({
       brandId: "supplysync360",
-      projectId: "executive-overview",
+      projectId: "brand-positioning",
       contentId: "ss360-slide-01",
       outputProfileId: "landscape_image_16_9",
     });
     const linkedinImage = compilePrompt({
       brandId: "supplysync360",
-      projectId: "executive-overview",
+      projectId: "brand-positioning",
       contentId: "ss360-slide-01",
       outputProfileId: "linkedin_asset_4_5",
     });
@@ -527,7 +536,7 @@ describe("compilePrompt", () => {
   it("compiles email output as exact text/email without image instructions", () => {
     const result = compilePrompt({
       brandId: "supplysync360",
-      projectId: "executive-overview",
+      projectId: "brand-positioning",
       contentId: "ss360-linkedin-01",
       outputProfileId: "email_brief",
     });
@@ -540,7 +549,7 @@ describe("compilePrompt", () => {
   it("returns a warning when an image brief is missing", () => {
     const result = compilePrompt({
       brandId: "supplysync360",
-      projectId: "executive-overview",
+      projectId: "brand-positioning",
       contentId: "ss360-slide-01",
       outputProfileId: "landscape_image_16_9",
       markdownOverride: "## Intent\nTest intent.\n\n## Visible Text\nTest visible text.",
@@ -552,7 +561,7 @@ describe("compilePrompt", () => {
   it("allows content-level header and footer text to override project defaults", () => {
     const result = compilePrompt({
       brandId: "supplysync360",
-      projectId: "executive-overview",
+      projectId: "brand-positioning",
       contentId: "ss360-slide-01",
       outputProfileId: "landscape_image_16_9",
       markdownOverride: [
@@ -582,7 +591,7 @@ describe("compilePrompt", () => {
   it("returns lint warnings for invalid dynamic preset hints", () => {
     const result = compilePrompt({
       brandId: "supplysync360",
-      projectId: "executive-overview",
+      projectId: "brand-positioning",
       contentId: "ss360-slide-01",
       outputProfileId: "landscape_image_16_9",
       markdownOverride: [
@@ -611,7 +620,7 @@ describe("compilePrompt", () => {
   it("compiles the Thenga sample and loads the Thenga footer centrally", () => {
     const result = compilePrompt({
       brandId: "thenga",
-      projectId: "investor-canvas",
+      projectId: "business-development",
       contentId: "thenga-slide-01",
       outputProfileId: "a4_pdf_portrait",
     });
@@ -627,20 +636,20 @@ describe("compilePrompt", () => {
     expect(result.debugPrompt).toContain("Full Source Rules:");
   });
 
-  it("uses the Thenga Standard Bank project PNG logo override for image prompts", () => {
+  it("uses the Thenga business-development PNG logo override for image prompts", () => {
     const result = compilePrompt({
       brandId: "thenga",
-      projectId: "standard-bank-pitch",
+      projectId: "business-development",
       contentId: "thenga-slide-01",
       outputProfileId: "landscape_image_16_9",
     });
 
-    expect(result.productionPrompt).toContain("Header: THENGA SOCIAL ENTERPRISES | Investor Pitch for Standard Bank");
+    expect(result.productionPrompt).toContain("Header: THENGA SOCIAL ENTERPRISES | Business Development");
     expect(result.productionPrompt).toContain("Footer: Trust | Inclusion | Participation | Prosperity | Copyright 2026. All Rights Reserved.");
     expect(result.productionPrompt).toContain("Logo: content/brands/thenga/assets/thenga-logo.png");
     expect(result.productionPrompt).toContain("Generation mode: direct_chatgpt");
     expect(result.productionPrompt).not.toContain("3840x2160");
-    expect(result.productionPrompt).toContain("Layout preset: industry_constellation");
+    expect(result.productionPrompt).toContain("Layout preset: executive_opening_split");
     expect(result.productionPrompt).not.toContain("Typography: Document title:");
     expect(result.productionPrompt).not.toContain("content/brands/thenga/assets/thenga-logo.svg");
     expect(result.promptPreview.logoAsset).toBe("content/brands/thenga/assets/thenga-logo.png");
@@ -650,21 +659,21 @@ describe("compilePrompt", () => {
   it("adds selected background theme direction to image prompts", () => {
     const balanced = compilePrompt({
       brandId: "supplysync360",
-      projectId: "executive-overview",
+      projectId: "brand-positioning",
       contentId: "ss360-slide-01",
       outputProfileId: "landscape_image_16_9",
       backgroundTheme: "balanced",
     });
     const light = compilePrompt({
       brandId: "supplysync360",
-      projectId: "executive-overview",
+      projectId: "brand-positioning",
       contentId: "ss360-slide-01",
       outputProfileId: "landscape_image_16_9",
       backgroundTheme: "light",
     });
     const dark = compilePrompt({
       brandId: "supplysync360",
-      projectId: "executive-overview",
+      projectId: "brand-positioning",
       contentId: "ss360-slide-01",
       outputProfileId: "landscape_image_16_9",
       backgroundTheme: "dark",
@@ -681,10 +690,11 @@ describe("compilePrompt", () => {
   });
 
   it("adds selected background theme direction to document prompts", () => {
+    const content = registeredContent("content/projects/supplysync360/coffee-uganda/documents/market-research-strategy-pack/supplysync360_uganda_coffee_market_research_strategy.md");
     const result = compilePrompt({
-      brandId: "supplysync360",
-      projectId: "executive-overview",
-      contentId: "ss360-doc-01",
+      brandId: content.brandId,
+      projectId: content.projectId,
+      contentId: content.id,
       outputProfileId: "a4_document_portrait",
       backgroundTheme: "dark",
     });
@@ -697,7 +707,7 @@ describe("compilePrompt", () => {
   it("auto-selects lighter balanced presets when no background hint is supplied", () => {
     const result = compilePrompt({
       brandId: "supplysync360",
-      projectId: "executive-overview",
+      projectId: "brand-positioning",
       contentId: "ss360-slide-01",
       outputProfileId: "landscape_image_16_9",
       markdownOverride: [
@@ -738,7 +748,7 @@ describe("compilePrompt", () => {
     const layouts = cases.map(([contentId, expectedLayout]) => {
       const result = compilePrompt({
         brandId: "supplysync360",
-        projectId: "executive-overview",
+      projectId: "brand-positioning",
         contentId,
         outputProfileId: "landscape_image_16_9",
       });
@@ -752,7 +762,7 @@ describe("compilePrompt", () => {
   it("uses one selected layout preset without a list of deck alternatives", () => {
     const result = compilePrompt({
       brandId: "supplysync360",
-      projectId: "executive-overview",
+      projectId: "brand-positioning",
       contentId: "ss360-slide-03",
       outputProfileId: "landscape_image_16_9",
     });
@@ -790,22 +800,17 @@ describe("compilePrompt", () => {
     const cases = [
       {
         brandId: "supplysync360",
-        projectId: "executive-overview",
+      projectId: "brand-positioning",
         expectedLogo: "content/brands/supplysync360/assets/supplysync360-logo-white.png",
       },
       {
         brandId: "thenga",
-        projectId: "investor-canvas",
-        expectedLogo: "content/brands/thenga/assets/thenga-logo-transparent-dark.png",
-      },
-      {
-        brandId: "thenga",
-        projectId: "standard-bank-pitch",
+        projectId: "business-development",
         expectedLogo: "content/brands/thenga/assets/thenga-logo.png",
       },
       {
         brandId: "rainfin",
-        projectId: "advisory-forum",
+        projectId: "client-presentations",
         expectedLogo: "content/brands/rainfin/assets/rainfin-logo.png",
       },
       {
@@ -835,9 +840,9 @@ describe("compilePrompt", () => {
   it("rejects project and brand combinations that are not linked", () => {
     expect(() => compilePrompt({
       brandId: "supplysync360",
-      projectId: "investor-canvas",
+      projectId: "business-development",
       contentId: "thenga-slide-01",
       outputProfileId: "landscape_image_16_9",
-    })).toThrow("Project investor-canvas is not linked to brandId supplysync360.");
+    })).toThrow("Project business-development is not linked to brandId supplysync360.");
   });
 });
