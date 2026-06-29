@@ -8,6 +8,12 @@ import {
 } from "./project-scaffold";
 import type { StorageStatus } from "./main-app-api";
 import { isIgnoredContentPath, parseContentSetPath } from "./content-set-paths";
+import {
+  getGeneratedFileDisplayName,
+  getGeneratedFileVersionLabel,
+  type GeneratedContentCategory,
+  type GeneratedContentFile,
+} from "./generated-content-contract";
 
 const DB_NAME = "prompt-builder-browser-workspace";
 const STORE_NAME = "handles";
@@ -362,4 +368,130 @@ export function previewBrowserProjectScaffold(input: CreateProjectInput): Projec
 
 export function browserWorkspaceAvailable(): boolean {
   return browserWorkspaceSupported();
+}
+
+function normalizeLogicalPath(value: string): string {
+  return value.replace(/\\/g, "/").replace(/^\/+/, "").replace(/\/+$/, "");
+}
+
+function fileTypeFromFilename(filename: string): GeneratedContentFile["fileType"] {
+  const lower = filename.toLowerCase();
+  if (/\.(png|jpe?g|webp|gif|svg)$/i.test(lower)) return "image";
+  if (lower.endsWith(".pdf")) return "pdf";
+  if (lower.endsWith(".docx")) return "document";
+  if (lower.endsWith(".pptx")) return "presentation";
+  if (/\.(md|txt)$/i.test(lower)) return "text";
+  return "other";
+}
+
+function generatedCategoryFromRelativePath(relativePath: string): GeneratedContentCategory {
+  const normalized = normalizeLogicalPath(relativePath);
+  if (normalized.includes("/visuals/")) return "visuals";
+  if (normalized.includes("/linkedin/")) return "linkedin";
+  if (normalized.includes("/documents/")) return "documents";
+  return "documents";
+}
+
+async function browserFileObjectUrl(handle: FileSystemFileHandle): Promise<string> {
+  return URL.createObjectURL(await handle.getFile());
+}
+
+async function walkGeneratedFiles(
+  directory: BrowserWorkspaceDirectoryHandle,
+  pathPrefix: string
+): Promise<GeneratedContentFile[]> {
+  const files: GeneratedContentFile[] = [];
+
+  for await (const [name, handle] of directory.entries()) {
+    const nextPath = pathPrefix ? `${pathPrefix}/${name}` : name;
+    if (handle.kind === "directory") {
+      files.push(...await walkGeneratedFiles(handle, nextPath));
+      continue;
+    }
+
+    const file = await handle.getFile();
+    const routePath = `content/${normalizeLogicalPath(nextPath)}`;
+    const generatedRelativePath = normalizeLogicalPath(nextPath.replace(/^projects\/[^/]+\/[^/]+\//, ""));
+
+    files.push({
+      id: routePath,
+      routePath,
+      projectRelativePath: generatedRelativePath,
+      filename: name,
+      displayName: getGeneratedFileDisplayName(name),
+      relativePath: routePath,
+      generatedRelativePath,
+      category: generatedCategoryFromRelativePath(routePath),
+      contentSet: generatedRelativePath.split("/")[1] || "",
+      versionLabel: getGeneratedFileVersionLabel(generatedRelativePath),
+      fileUrl: await browserFileObjectUrl(handle),
+      fileType: fileTypeFromFilename(name),
+      sizeBytes: file.size,
+      modifiedAt: new Date(file.lastModified).toISOString(),
+    });
+  }
+
+  return files;
+}
+
+export async function listBrowserGeneratedContent(input: {
+  projectFolder: string;
+  category?: GeneratedContentCategory;
+  contentSet?: string;
+}): Promise<{
+  generatedContentRoot: string;
+  files: GeneratedContentFile[];
+}> {
+  const root = await getConnectedRootHandle();
+  const projectRoot = await directoryHandleAt(root, normalizeLogicalPath(input.projectFolder).replace(/^content\/?/, "").split("/"), false);
+  const categories = input.category && input.category !== "all"
+    ? [input.category]
+    : (["visuals", "documents", "linkedin"] as const);
+  const files: GeneratedContentFile[] = [];
+
+  for (const category of categories) {
+    const categoryRoot = await projectRoot.getDirectoryHandle(category).catch(() => null);
+    if (!categoryRoot) continue;
+
+    if (input.contentSet) {
+      const contentSetRoot = await categoryRoot.getDirectoryHandle(input.contentSet).catch(() => null);
+      const generatedRoot = contentSetRoot
+        ? await contentSetRoot.getDirectoryHandle("_generated").catch(() => null)
+        : null;
+      if (generatedRoot) {
+        files.push(...await walkGeneratedFiles(generatedRoot, `${normalizeLogicalPath(input.projectFolder).replace(/^content\/?/, "")}/${category}/${input.contentSet}/_generated`));
+      }
+      continue;
+    }
+
+    for await (const [contentSetName, contentSetHandle] of categoryRoot.entries()) {
+      if (contentSetHandle.kind !== "directory") continue;
+      const generatedRoot = await contentSetHandle.getDirectoryHandle("_generated").catch(() => null);
+      if (!generatedRoot) continue;
+      files.push(...await walkGeneratedFiles(generatedRoot, `${normalizeLogicalPath(input.projectFolder).replace(/^content\/?/, "")}/${category}/${contentSetName}/_generated`));
+    }
+  }
+
+  return {
+    generatedContentRoot: `Browser connected: ${normalizeLogicalPath(input.projectFolder)}`,
+    files,
+  };
+}
+
+export async function getBrowserGeneratedContentFolder(input: {
+  projectFolder: string;
+  category: Exclude<GeneratedContentCategory, "all">;
+  contentSet: string;
+}): Promise<{
+  folder: string;
+  generatedContentRoot: string;
+}> {
+  const root = await getConnectedRootHandle();
+  const relativeFolder = `${normalizeLogicalPath(input.projectFolder).replace(/^content\/?/, "")}/${input.category}/${input.contentSet}/_generated`;
+  await directoryHandleAt(root, relativeFolder.split("/"), true);
+
+  return {
+    folder: `Browser connected: content/${relativeFolder}`,
+    generatedContentRoot: `Browser connected: content/${relativeFolder}`,
+  };
 }

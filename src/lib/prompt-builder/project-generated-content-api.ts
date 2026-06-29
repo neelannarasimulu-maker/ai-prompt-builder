@@ -1,5 +1,9 @@
 import { mainAppAssetUrl, mainAppFetch } from "./main-app-api";
-import { saveBrowserContentSourceFile } from "./browser-workspace";
+import {
+  getBrowserGeneratedContentFolder,
+  listBrowserGeneratedContent,
+  saveBrowserContentSourceFile,
+} from "./browser-workspace";
 import {
   generatedContentRoutes,
   getGeneratedFileDisplayName as getGeneratedFileDisplayNameFromFilename,
@@ -129,23 +133,32 @@ export async function listProjectGeneratedContent(input: {
     category: input.category || "all",
     ...(input.contentSet ? { contentSet: input.contentSet } : {}),
   });
+  try {
+    const response = await mainAppFetch(`${generatedContentRoutes.list}?${params.toString()}`);
+    const contentType = response.headers.get("content-type") || "";
+    if (!contentType.includes("application/json")) throw new Error("Hosted fallback");
+    const payload = (await response.json()) as ListGeneratedContentResponse;
 
-  const response = await mainAppFetch(`${generatedContentRoutes.list}?${params.toString()}`);
-  const payload = (await response.json()) as ListGeneratedContentResponse;
+    if (!payload.ok) {
+      throw new Error(payload.error || "Could not list generated content.");
+    }
 
-  if (!payload.ok) {
-    throw new Error(payload.error || "Could not list generated content.");
+    return {
+      generatedContentRoot: payload.generatedContentRoot || "",
+      files: (payload.files || []).map((file) =>
+        normalizeGeneratedContentFile({
+          ...file,
+          fileUrl: file.fileUrl ? mainAppAssetUrl(file.fileUrl) : file.fileUrl,
+        })
+      ),
+    };
+  } catch {
+    const result = await listBrowserGeneratedContent(input);
+    return {
+      generatedContentRoot: result.generatedContentRoot,
+      files: result.files.map(enrichGeneratedContentFile),
+    };
   }
-
-  return {
-    generatedContentRoot: payload.generatedContentRoot || "",
-    files: (payload.files || []).map((file) =>
-      normalizeGeneratedContentFile({
-        ...file,
-        fileUrl: file.fileUrl ? mainAppAssetUrl(file.fileUrl) : file.fileUrl,
-      })
-    ),
-  };
 }
 
 export async function uploadProjectGeneratedContent(input: {
@@ -229,18 +242,23 @@ export async function getProjectGeneratedContentFolder(input: {
     category: input.category,
     contentSet: input.contentSet,
   });
+  try {
+    const response = await mainAppFetch(`${generatedContentRoutes.folder}?${params.toString()}`);
+    const contentType = response.headers.get("content-type") || "";
+    if (!contentType.includes("application/json")) throw new Error("Hosted fallback");
+    const payload = (await response.json()) as GeneratedContentFolderResponse;
 
-  const response = await mainAppFetch(`${generatedContentRoutes.folder}?${params.toString()}`);
-  const payload = (await response.json()) as GeneratedContentFolderResponse;
+    if (!payload.ok || !payload.folder) {
+      throw new Error(payload.error || "Could not resolve the content-set output folder.");
+    }
 
-  if (!payload.ok || !payload.folder) {
-    throw new Error(payload.error || "Could not resolve the content-set output folder.");
+    return {
+      folder: payload.folder,
+      generatedContentRoot: payload.generatedContentRoot || "",
+    };
+  } catch {
+    return getBrowserGeneratedContentFolder(input);
   }
-
-  return {
-    folder: payload.folder,
-    generatedContentRoot: payload.generatedContentRoot || "",
-  };
 }
 
 export async function exportProjectGeneratedContent(input: {
