@@ -2,13 +2,14 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const connectBrowserWorkspace = vi.fn();
 const browserWorkspaceAvailable = vi.fn();
+const listBrowserRuntimeProjects = vi.fn();
 
 vi.mock("../src/lib/prompt-builder/browser-workspace", () => ({
   browserWorkspaceAvailable,
   connectBrowserWorkspace,
   createBrowserProject: vi.fn(),
   getBrowserWorkspaceStatus: vi.fn(),
-  listBrowserRuntimeProjects: vi.fn(),
+  listBrowserRuntimeProjects,
   loadBrowserRuntimeProject: vi.fn(),
   previewBrowserProjectScaffold: vi.fn(),
 }));
@@ -27,6 +28,7 @@ describe("main-app storage routing", () => {
       browserFsAvailable: true,
       workspaceKind: "browser",
     });
+    listBrowserRuntimeProjects.mockResolvedValue({ ok: true, projects: [] });
     globalThis.fetch = vi.fn();
   });
 
@@ -62,5 +64,15 @@ describe("main-app storage routing", () => {
     }));
     expect(connectBrowserWorkspace).not.toHaveBeenCalled();
     expect(status.contentRoot).toBe("C:\\Content");
+  });
+
+  it("treats an unconnected browser workspace as an empty hosted project list", async () => {
+    browserWorkspaceAvailable.mockReturnValue(true);
+    listBrowserRuntimeProjects.mockRejectedValue(new Error("Choose a local content folder first."));
+    const { listRuntimeProjects } = await import("../src/lib/prompt-builder/main-app-api");
+
+    const payload = await listRuntimeProjects();
+
+    expect(payload).toEqual({ ok: true, projects: [] });
   });
 });

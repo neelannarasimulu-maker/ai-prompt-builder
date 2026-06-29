@@ -26,6 +26,7 @@ export type StorageStatus = {
 };
 
 const unavailableMessage = "Local storage is available when the app is running with npm run dev.";
+const browserFolderNotChosenMessage = "Choose a local content folder first.";
 
 function isAbsoluteFilesystemPath(value: string): boolean {
   return /^[a-zA-Z]:[\\/]/.test(value) || value.startsWith("/") || value.startsWith("\\\\");
@@ -112,7 +113,14 @@ export function createProject(input: CreateProjectInput): Promise<{
 export function listRuntimeProjects(): Promise<{ ok: boolean; projects: RuntimeProject[] }> {
   return jsonRequest<{ ok: boolean; projects: RuntimeProject[] }>("/api/projects").catch(async () => {
     if (!browserWorkspaceAvailable()) throw new Error(unavailableMessage);
-    return listBrowserRuntimeProjects();
+    try {
+      return await listBrowserRuntimeProjects();
+    } catch (error) {
+      if (error instanceof Error && error.message === browserFolderNotChosenMessage) {
+        return { ok: true, projects: [] };
+      }
+      throw error;
+    }
   });
 }
 
