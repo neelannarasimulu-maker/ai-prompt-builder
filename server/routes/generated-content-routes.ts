@@ -1,19 +1,15 @@
 import type { ViteDevServer } from "vite";
+import sharp from "sharp";
 import type { CreateProjectInput } from "../../src/lib/prompt-builder/project-scaffold";
 import type { ChatGptRpaStartInput } from "../../src/lib/prompt-builder/chatgpt-rpa";
 import type { ChatGptAssistImportInput } from "../../src/lib/prompt-builder/chatgpt-assist";
 import type { DistributionDraft, DistributionRecord } from "../../src/lib/prompt-builder/distribution";
+import {
+  generatedContentRoutes,
+  getGeneratedContentAssetUrl,
+} from "../../src/lib/prompt-builder/generated-content-contract";
 import type { MasterFrameMetadata } from "../../src/lib/prompt-builder/project-generated-content-api";
 import type { LocalAppRouteContext } from "../http/local-app-context";
-
-export const generatedContentRoutes = {
-  folder: "/api/generated-content/folder",
-  list: "/api/generated-content/list",
-  export: "/api/generated-content/export",
-  renderDocument: "/api/generated-content/render-document",
-  upload: "/api/generated-content/upload",
-  assets: "/project-generated-content",
-} as const;
 
 export function registerGeneratedContentRoutes(server: ViteDevServer, context: LocalAppRouteContext): void {
   const {
@@ -57,6 +53,19 @@ export function registerGeneratedContentRoutes(server: ViteDevServer, context: L
     getPathInsideProject,
     renderProductionArtwork,
   } = context;
+
+  async function pdfOptimizedImageBytes(absolutePath: string): Promise<Buffer> {
+    const imageBuffer = fs.readFileSync(absolutePath);
+    const mimeType = getImageMimeType(absolutePath);
+    if (!mimeType) return imageBuffer;
+    if (mimeType === "image/jpeg") {
+      return sharp(imageBuffer).jpeg({ quality: 90, mozjpeg: true }).toBuffer();
+    }
+    return sharp(imageBuffer)
+      .flatten({ background: "#ffffff" })
+      .jpeg({ quality: 90, mozjpeg: true })
+      .toBuffer();
+  }
 
   server.middlewares.use(generatedContentRoutes.folder, (req, res) => {
         try {
@@ -108,21 +117,23 @@ export function registerGeneratedContentRoutes(server: ViteDevServer, context: L
             .filter((absolutePath) => absolutePath.includes(`${path.sep}_generated${path.sep}`))
             .filter((absolutePath) => !contentSet || absolutePath.includes(`${path.sep}${contentSet}${path.sep}`))
             .map((absolutePath) => {
-            const relativeFromGeneratedRoot = path.relative(projectRoot, absolutePath).replace(/\\/g, "/");
-            const relativeFromProjectRoot = contentRelativePath(absolutePath);
-            const parts = relativeFromGeneratedRoot.split("/");
+            const projectRelativePath = path.relative(projectRoot, absolutePath).replace(/\\/g, "/");
+            const routePath = contentRelativePath(absolutePath);
+            const parts = projectRelativePath.split("/");
             const stat = fs.statSync(absolutePath);
 
             return {
-              id: relativeFromProjectRoot,
+              id: routePath,
+              routePath,
+              projectRelativePath,
               filename: path.basename(absolutePath),
               displayName: getGeneratedFileDisplayName(path.basename(absolutePath)),
-              relativePath: relativeFromProjectRoot,
-              generatedRelativePath: relativeFromGeneratedRoot,
+              relativePath: routePath,
+              generatedRelativePath: projectRelativePath,
               category: parts[0] || "documents",
               contentSet: parts[1] || "",
-              versionLabel: getGeneratedFileVersionLabel(relativeFromGeneratedRoot),
-              fileUrl: `/project-generated-content/${relativeFromProjectRoot}`,
+              versionLabel: getGeneratedFileVersionLabel(projectRelativePath),
+              fileUrl: getGeneratedContentAssetUrl(routePath),
               fileType: getFileType(absolutePath),
               sizeBytes: stat.size,
               modifiedAt: stat.mtime.toISOString(),
@@ -248,15 +259,13 @@ export function registerGeneratedContentRoutes(server: ViteDevServer, context: L
             const pdf = await PDFDocument.create();
 
             for (const absolutePath of selectedFiles) {
-              const imageBuffer = fs.readFileSync(absolutePath);
-              const mimeType = getImageMimeType(absolutePath);
-              const image = mimeType === "image/png"
-                ? await pdf.embedPng(imageBuffer)
-                : await pdf.embedJpg(imageBuffer);
+              const imageBuffer = await pdfOptimizedImageBytes(absolutePath);
+              const metadata = await sharp(imageBuffer).metadata();
+              const image = await pdf.embedJpg(imageBuffer);
               const page = pdf.addPage([pdfPageWidth, pdfPageHeight]);
               const rect = containRect({
-                sourceWidth: image.width,
-                sourceHeight: image.height,
+                sourceWidth: metadata.width || image.width,
+                sourceHeight: metadata.height || image.height,
                 targetWidth: pdfPageWidth,
                 targetHeight: pdfPageHeight,
               });
@@ -269,16 +278,17 @@ export function registerGeneratedContentRoutes(server: ViteDevServer, context: L
               });
             }
 
-            fs.writeFileSync(outputPath, await pdf.save());
+            fs.writeFileSync(outputPath, await pdf.save({ useObjectStreams: true }));
           }
 
-          const relativeFromProjectRoot = contentRelativePath(outputPath);
+          const routePath = contentRelativePath(outputPath);
 
           sendJson(res, 200, {
             ok: true,
             filename: path.basename(outputPath),
-            relativePath: relativeFromProjectRoot,
-            fileUrl: `/project-generated-content/${relativeFromProjectRoot}`,
+            relativePath: routePath,
+            routePath,
+            fileUrl: getGeneratedContentAssetUrl(routePath),
             skipped: [],
           });
         } catch (error) {
@@ -341,7 +351,8 @@ export function registerGeneratedContentRoutes(server: ViteDevServer, context: L
             ok: true,
             filename: path.basename(outputPath),
             relativePath,
-            fileUrl: `/project-generated-content/${relativePath}`,
+            routePath: relativePath,
+            fileUrl: getGeneratedContentAssetUrl(relativePath),
             savedAt: new Date().toISOString(),
           });
         } catch (error) {
@@ -433,13 +444,14 @@ export function registerGeneratedContentRoutes(server: ViteDevServer, context: L
             : decodedBytes;
           fs.writeFileSync(absolutePath, outputBytes);
 
-          const relativeFromProjectRoot = contentRelativePath(absolutePath);
+          const routePath = contentRelativePath(absolutePath);
 
           sendJson(res, 200, {
             ok: true,
             filename: cleanFilename,
-            relativePath: relativeFromProjectRoot,
-            fileUrl: `/project-generated-content/${relativeFromProjectRoot}`,
+            relativePath: routePath,
+            routePath,
+            fileUrl: getGeneratedContentAssetUrl(routePath),
             savedAt: new Date().toISOString(),
           });
         } catch (error) {

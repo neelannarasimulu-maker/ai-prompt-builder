@@ -1,7 +1,21 @@
 ## Intent
+
 Create a LinkedIn carousel that positions governed access as a board-level control issue for connected supply networks. The post should move beyond generic visibility and show why roles, permissions and business boundaries matter when suppliers, branches and linked businesses share operational data. Create the asset as 4 separate LinkedIn carousel images in 4:5 portrait format so the images can be combined afterwards.
 
+## LinkedIn Format
+
+linkedin_carousel
+
+## Layout Hint
+
+governed_access_carousel
+
+## Background Hint
+
+supplysync360_governance_depth
+
 ## Visible Text
+
 Page 1 Title: Shared Visibility Without Governed Access Is a Risk
 Page 1 Body: As supply networks connect more branches, suppliers and downstream businesses, informal sharing becomes both useful and dangerous.
 Page 1 Footer: SupplySync360 | Visibility. Intelligence. Action. Control.
@@ -19,6 +33,7 @@ Page 4 Body: Clients, businesses, linked businesses, suppliers, users, roles, mo
 Page 4 Footer: Shared control for supply-network execution.
 
 ## LinkedIn Post Text
+
 Many operators start with spreadsheets because they are fast, flexible and familiar.
 
 That works until the network grows.
@@ -41,6 +56,18 @@ Shared visibility is powerful. Governed visibility is scalable.
 #AccessControl #SupplyNetwork #OperationalGovernance #SupplyChainVisibility #SupplySync360
 
 ## Image Brief
+
 Create a premium 4-image LinkedIn carousel as 4 separate 4:5 portrait images, one image per page, each 1080 x 1350 px. Do not create a PDF and do not place multiple pages in one image. The user will combine the images afterwards. Use official SupplySync360 logo asset only, preserving aspect ratio and avoiding redraw, recolour, crop or stretch. Use a board-level visual language with deep teal, graphite, mist cards and one restrained yellow permission-risk marker.
 
 Visual direction: executive South African supply-network control scene built from tangible business objects: branch folders, supplier pack, finance approval file, user access tokens and module cards on a polished strategy table. Use disciplined teal access pathways to show who can see what. Keep all on-image text exactly from Visible Text. Avoid cybersecurity clichés, lock-heavy visuals, fake dashboards, readable private data and clutter.
+
+## Post Notes
+
+Internal campaign notes:
+- Brand: SupplySync360
+- Channel: LinkedIn
+- Asset type: carousel
+- Page count detected: 4
+- Use Visible Text as the exact on-image text source.
+- Use LinkedIn Post Text as the caption/post copy only.
+- Do not display Post Notes in generated images or post copy.

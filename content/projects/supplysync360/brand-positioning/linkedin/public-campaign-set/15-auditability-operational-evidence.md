@@ -1,7 +1,21 @@
 ## Intent
+
 Create a high-impact LinkedIn carousel for SupplySync360 that reframes auditability as operational evidence, not compliance admin. Create the asset as 5 separate carousel images that can be combined after generation. The post should speak to risk, compliance, finance, operations and executive stakeholders.
 
+## LinkedIn Format
+
+linkedin_carousel
+
+## Layout Hint
+
+operational_evidence_carousel
+
+## Background Hint
+
+supplysync360_audit_depth
+
 ## Visible Text
+
 Page 1 Title: Auditability Is How Operations Prove What Happened
 Page 1 Body: In constrained supply environments, accountability matters.
 Page 1 Footer: SupplySync360 | Visibility. Intelligence. Action. Control.
@@ -23,6 +37,7 @@ Page 5 Body: SupplySync360 turns operational activity into a trusted trail manag
 Page 5 Footer: Operational evidence, built into execution.
 
 ## LinkedIn Post Text
+
 Auditability is not only for compliance teams.
 
 It is how operations prove what happened.
@@ -46,4 +61,16 @@ It is part of the control system.
 #Auditability #OperationalGovernance #SupplyChainControl #RiskManagement #SupplySync360
 
 ## Image Brief
+
 Create a premium 5-image LinkedIn carousel as 5 separate 4:5 portrait images, one image per page, each 1080 x 1350 px. Do not create a PDF and do not place multiple pages in one image. The user will combine the images afterwards. Use SupplySync360 brand styling with deep teal, vivid teal, graphite, mist and restrained signal yellow. Visual direction: South African operations-governance review environment with receipt proof, audit folder, version-change trail, stock movement evidence and approval notes arranged like a clean executive evidence board. Make each page visually distinct: opener, management-questions page, evidence-components page, governance-value page and final position page. Keep all on-image text exactly from Visible Text. Avoid fake legal motifs, readable personal data, generic icons and clutter.
+
+## Post Notes
+
+Internal campaign notes:
+- Brand: SupplySync360
+- Channel: LinkedIn
+- Asset type: carousel
+- Page count detected: 5
+- Use Visible Text as the exact on-image text source.
+- Use LinkedIn Post Text as the caption/post copy only.
+- Do not display Post Notes in generated images or post copy.

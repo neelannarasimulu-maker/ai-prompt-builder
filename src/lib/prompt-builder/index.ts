@@ -10,9 +10,7 @@ export * from "./dynamic-content-tags";
 export * from "./project-generated-content-api";
 export * from "./output-naming";
 export * from "./document-background-presets";
-export * from "./document-output";
 export * from "./document-prompt-template";
-export * from "./document-output-profiles";
 export { compilePrompt as compileHydratedPrompt } from "./prompt-compiler";
 export { compilePromptFromIds, compilePromptFromIds as compilePrompt } from "./compile-from-ids";
 export type {

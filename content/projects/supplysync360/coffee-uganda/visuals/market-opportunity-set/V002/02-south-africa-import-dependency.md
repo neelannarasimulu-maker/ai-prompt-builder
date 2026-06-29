@@ -2,37 +2,31 @@
 
 Explain why South Africa is an import-led coffee market and why this creates a structural opportunity.
 
+## Layout Hint
+
+import_dependency_ecosystem
+
+## Background Hint
+
+supplysync360_soft_market_depth
+
 ## Visible Text
 
-### South Africa Is An Import-Led Coffee Market
-
-South African coffee demand is materially larger than domestic coffee production capacity.
-
-Local coffee farming exists, mainly in suitable subtropical regions, but it remains niche compared to national consumption and commercial roasting demand.
-
-This creates a recurring need for imported coffee supply.
-
-Imported coffee supports:
-
-Commercial roasters
-
-Specialty roasters
-
-Café chains
-
-Hospitality groups
-
-Office coffee providers
-
-Retail coffee brands
-
-Private-label products
-
-### Market Implication
-
-SupplySync360 does not need to create demand for coffee.
-
-The opportunity is to participate in an existing import-dependent market and improve how East African coffee reaches South African buyers.
+Title: South Africa Is An Import-Led Coffee Market
+Body: South African coffee demand is materially larger than domestic coffee production capacity.
+Body: Local coffee farming exists, mainly in suitable subtropical regions, but it remains niche compared to national consumption and commercial roasting demand.
+Body: This creates a recurring need for imported coffee supply.
+Title: Imported coffee supports
+Item: Commercial roasters
+Body: Specialty roasters
+Body: Café chains
+Body: Hospitality groups
+Body: Office coffee providers
+Body: Retail coffee brands
+Body: Private-label products
+Title: Market Implication
+Body: SupplySync360 does not need to create demand for coffee.
+Body: The opportunity is to participate in an existing import-dependent market and improve how East African coffee reaches South African buyers.
 
 ## Image Brief
 

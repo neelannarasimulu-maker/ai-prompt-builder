@@ -157,9 +157,11 @@ describe("workflow feature helpers", () => {
     const manifest = buildBatchRunManifest(items);
 
     expect(manifest).toContain("BATCH GENERATION QUEUE");
+    expect(manifest).toContain("Do not ask ChatGPT to complete the whole batch in one response");
     expect(manifest).toContain("Do not generate a combined contact sheet");
     expect(manifest).toContain("Each item is a separate finished full-quality visual");
     expect(manifest).toContain("ITEM 1: Opening Slide");
+    expect(manifest).toContain("Instruction: create this item as one standalone finished visual only");
     expect(manifest).toContain("Output filename: 01-opening.png");
     expect(manifest).toContain("Prompt two");
   });

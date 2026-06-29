@@ -1,3 +1,23 @@
+import { mainAppAssetUrl, mainAppFetch } from "./main-app-api";
+import { saveBrowserContentSourceFile } from "./browser-workspace";
+import {
+  generatedContentRoutes,
+  getGeneratedFileDisplayName as getGeneratedFileDisplayNameFromFilename,
+  getGeneratedFileVersionLabel,
+  normalizeGeneratedContentFile,
+  type GeneratedContentCategory,
+  type GeneratedContentFile,
+} from "./generated-content-contract";
+
+export {
+  generatedContentRoutes,
+  getGeneratedFileVersionLabel,
+} from "./generated-content-contract";
+export type {
+  GeneratedContentCategory,
+  GeneratedContentFile,
+} from "./generated-content-contract";
+
 export type SaveContentResponse = {
   ok: boolean;
   path?: string;
@@ -12,27 +32,6 @@ export type CopyContentFileResponse = {
   error?: string;
 };
 
-export type GeneratedContentCategory =
-  | "all"
-  | "visuals"
-  | "documents"
-  | "linkedin";
-
-export type GeneratedContentFile = {
-  id: string;
-  filename: string;
-  displayName: string;
-  relativePath: string;
-  generatedRelativePath: string;
-  category: GeneratedContentCategory;
-  contentSet: string;
-  versionLabel?: string;
-  fileUrl: string;
-  fileType: "image" | "pdf" | "document" | "presentation" | "text" | "other";
-  sizeBytes: number;
-  modifiedAt: string;
-};
-
 export type ListGeneratedContentResponse = {
   ok: boolean;
   projectFolder?: string;
@@ -45,6 +44,7 @@ export type UploadGeneratedContentResponse = {
   ok: boolean;
   filename?: string;
   relativePath?: string;
+  routePath?: string;
   fileUrl?: string;
   savedAt?: string;
   error?: string;
@@ -61,6 +61,7 @@ export type ExportGeneratedContentResponse = {
   ok: boolean;
   filename?: string;
   relativePath?: string;
+  routePath?: string;
   fileUrl?: string;
   skipped?: string[];
   error?: string;
@@ -88,15 +89,19 @@ export async function saveContentSourceFile(
   path: string,
   content: string
 ): Promise<SaveContentResponse> {
-  const response = await mainAppFetch("/api/content/save", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({ path, content }),
-  });
+  try {
+    const response = await mainAppFetch("/api/content/save", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ path, content }),
+    });
 
-  return response.json() as Promise<SaveContentResponse>;
+    return await response.json() as SaveContentResponse;
+  } catch {
+    return saveBrowserContentSourceFile(path, content);
+  }
 }
 
 export async function copyContentFileToClipboard(path: string): Promise<CopyContentFileResponse> {
@@ -125,7 +130,7 @@ export async function listProjectGeneratedContent(input: {
     ...(input.contentSet ? { contentSet: input.contentSet } : {}),
   });
 
-  const response = await mainAppFetch(`/api/generated-content/list?${params.toString()}`);
+  const response = await mainAppFetch(`${generatedContentRoutes.list}?${params.toString()}`);
   const payload = (await response.json()) as ListGeneratedContentResponse;
 
   if (!payload.ok) {
@@ -134,7 +139,12 @@ export async function listProjectGeneratedContent(input: {
 
   return {
     generatedContentRoot: payload.generatedContentRoot || "",
-    files: (payload.files || []).map((file) => ({ ...file, fileUrl: mainAppAssetUrl(file.fileUrl) })),
+    files: (payload.files || []).map((file) =>
+      normalizeGeneratedContentFile({
+        ...file,
+        fileUrl: file.fileUrl ? mainAppAssetUrl(file.fileUrl) : file.fileUrl,
+      })
+    ),
   };
 }
 
@@ -157,7 +167,7 @@ export async function uploadProjectGeneratedContent(input: {
 
   const dataBase64 = btoa(binary);
 
-  const response = await mainAppFetch("/api/generated-content/upload", {
+  const response = await mainAppFetch(generatedContentRoutes.upload, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -175,7 +185,11 @@ export async function uploadProjectGeneratedContent(input: {
   });
 
   const payload = await response.json() as UploadGeneratedContentResponse;
-  return { ...payload, fileUrl: payload.fileUrl ? mainAppAssetUrl(payload.fileUrl) : payload.fileUrl };
+  return {
+    ...payload,
+    routePath: payload.routePath || payload.relativePath,
+    fileUrl: payload.fileUrl ? mainAppAssetUrl(payload.fileUrl) : payload.fileUrl,
+  };
 }
 
 export async function renderProjectDocument(input: {
@@ -189,13 +203,17 @@ export async function renderProjectDocument(input: {
   logoAsset: string;
   contentSet: string;
 }): Promise<UploadGeneratedContentResponse> {
-  const response = await mainAppFetch("/api/generated-content/render-document", {
+  const response = await mainAppFetch(generatedContentRoutes.renderDocument, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(input),
   });
   const payload = await response.json() as UploadGeneratedContentResponse;
-  return { ...payload, fileUrl: payload.fileUrl ? mainAppAssetUrl(payload.fileUrl) : payload.fileUrl };
+  return {
+    ...payload,
+    routePath: payload.routePath || payload.relativePath,
+    fileUrl: payload.fileUrl ? mainAppAssetUrl(payload.fileUrl) : payload.fileUrl,
+  };
 }
 
 export async function getProjectGeneratedContentFolder(input: {
@@ -212,7 +230,7 @@ export async function getProjectGeneratedContentFolder(input: {
     contentSet: input.contentSet,
   });
 
-  const response = await mainAppFetch(`/api/generated-content/folder?${params.toString()}`);
+  const response = await mainAppFetch(`${generatedContentRoutes.folder}?${params.toString()}`);
   const payload = (await response.json()) as GeneratedContentFolderResponse;
 
   if (!payload.ok || !payload.folder) {
@@ -234,7 +252,7 @@ export async function exportProjectGeneratedContent(input: {
   contentSet: string;
   versionLabel?: string;
 }): Promise<ExportGeneratedContentResponse> {
-  const response = await mainAppFetch("/api/generated-content/export", {
+  const response = await mainAppFetch(generatedContentRoutes.export, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -243,7 +261,11 @@ export async function exportProjectGeneratedContent(input: {
   });
 
   const payload = await response.json() as ExportGeneratedContentResponse;
-  return { ...payload, fileUrl: payload.fileUrl ? mainAppAssetUrl(payload.fileUrl) : payload.fileUrl };
+  return {
+    ...payload,
+    routePath: payload.routePath || payload.relativePath,
+    fileUrl: payload.fileUrl ? mainAppAssetUrl(payload.fileUrl) : payload.fileUrl,
+  };
 }
 
 export function formatFileSize(sizeBytes: number): string {
@@ -291,16 +313,7 @@ export function copyableFilename(filename: string): string {
 }
 
 export function getGeneratedFileDisplayName(file: Pick<GeneratedContentFile, "filename">): string {
-  return basenameWithoutExtension(file.filename)
-    .replace(/[-_]+/g, " ")
-    .replace(/\s+/g, " ")
-    .trim();
-}
-
-export function getGeneratedFileVersionLabel(generatedRelativePath: string): string | undefined {
-  const segments = generatedRelativePath.replace(/\\/g, "/").split("/");
-  const version = segments.find((segment) => /^v\d{3,}$/i.test(segment.trim()));
-  return version?.trim();
+  return getGeneratedFileDisplayNameFromFilename(file.filename);
 }
 
 export function getGeneratedVersionSortValue(versionLabel: string): number {
@@ -310,10 +323,5 @@ export function getGeneratedVersionSortValue(versionLabel: string): number {
 }
 
 export function enrichGeneratedContentFile(file: GeneratedContentFile): GeneratedContentFile {
-  return {
-    ...file,
-    displayName: file.displayName || getGeneratedFileDisplayName(file),
-    versionLabel: file.versionLabel || getGeneratedFileVersionLabel(file.generatedRelativePath),
-  };
+  return normalizeGeneratedContentFile(file);
 }
-import { mainAppAssetUrl, mainAppFetch } from "./main-app-api";

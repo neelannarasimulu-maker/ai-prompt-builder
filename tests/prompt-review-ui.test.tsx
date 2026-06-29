@@ -36,7 +36,7 @@ describe("Prompt Quality Review UI", () => {
   it("defaults promptReview.enabled to false and hides the panel", () => {
     expect(readFeatureFlag("promptReview.enabled", undefined)).toBe(false);
     expect(renderToStaticMarkup(
-      <PromptQualityReviewPanel enabled={false} result={reviewResult()} />
+      <PromptQualityReviewPanel enabled={false} result={reviewResult()} editableMarkdown="" />
     )).toBe("");
   });
 
@@ -61,7 +61,7 @@ describe("Prompt Quality Review UI", () => {
 
   it("renders the deterministic review when the flag is true", () => {
     const html = renderToStaticMarkup(
-      <PromptQualityReviewPanel enabled result={reviewResult()} />
+      <PromptQualityReviewPanel enabled result={reviewResult()} editableMarkdown="" />
     );
 
     expect(html).toContain("Prompt Quality Review");

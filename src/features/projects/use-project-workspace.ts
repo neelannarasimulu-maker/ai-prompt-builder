@@ -17,6 +17,8 @@ export function useProjectWorkspace(brandList: BrandItem[]) {
 
   const [storageRoot, setStorageRoot] = useState("");
   const [storageState, setStorageState] = useState<"checking" | "available" | "read-only">("checking");
+  const [browserFsAvailable, setBrowserFsAvailable] = useState(false);
+  const [workspaceKind, setWorkspaceKind] = useState<"server" | "browser">("server");
   const [selectedBrandId, setSelectedBrandId] = useLocalStorageState("promptBuilder.selectedBrandId", brandList[0]?.id ?? "");
   const filteredProjects = useMemo(() => projectList.filter((project) => project.brandId === selectedBrandId), [projectList, selectedBrandId]);
   const [selectedProjectId, setSelectedProjectId] = useLocalStorageState("promptBuilder.selectedProjectId", filteredProjects[0]?.id ?? "");
@@ -33,10 +35,14 @@ export function useProjectWorkspace(brandList: BrandItem[]) {
       const status = await getStorageStatus();
       setStorageState(status.writable ? "available" : "read-only");
       setStorageRoot(status.contentRoot || "");
+      setBrowserFsAvailable(Boolean(status.browserFsAvailable));
+      setWorkspaceKind(status.workspaceKind || "server");
       const payload = await listRuntimeProjects();
       setRuntimeProjects(payload.projects || []);
     } catch {
       setStorageState("read-only");
+      setBrowserFsAvailable(false);
+      setWorkspaceKind("server");
     }
   }
 
@@ -61,7 +67,7 @@ export function useProjectWorkspace(brandList: BrandItem[]) {
 
   return {
     runtimeProjects, setRuntimeProjects, runtimeFilesByProject, setRuntimeFilesByProject,
-    projectList, storageRoot, setStorageRoot, storageState, setStorageState,
+    projectList, storageRoot, setStorageRoot, storageState, setStorageState, browserFsAvailable, workspaceKind,
     localWritesAvailable: storageState === "available", selectedBrandId, setSelectedBrandId,
     filteredProjects, selectedProjectId, setSelectedProjectId, selectedBrand, selectedProject,
     refreshRuntimeRepository, activeRuntimeFiles, allProjectContent,

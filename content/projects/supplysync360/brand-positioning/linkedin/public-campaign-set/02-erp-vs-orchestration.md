@@ -1,7 +1,21 @@
 ## Intent
+
 Create a continuity LinkedIn carousel for SupplySync360 post 02. Preserve the original theme while restructuring it into 4 separate LinkedIn carousel images. The post should clarify that ERP remains essential as a system of record, but SupplySync360 addresses the execution gap where live exceptions must be coordinated.
 
+## LinkedIn Format
+
+linkedin_carousel
+
+## Layout Hint
+
+erp_execution_gap_carousel
+
+## Background Hint
+
+supplysync360_execution_layer_depth
+
 ## Visible Text
+
 Page 1 Title: ERP Is Not Enough When the Supply Chain Is Moving
 Page 1 Body: ERP can record the transaction. It cannot always coordinate the decision when a supplier promise changes or a branch becomes short.
 Page 1 Footer: SupplySync360 | Visibility. Intelligence. Action. Control.
@@ -19,6 +33,7 @@ Page 4 Body: SupplySync360 sits in the execution gap: inventory, suppliers, orde
 Page 4 Footer: Record the truth. Coordinate the action.
 
 ## LinkedIn Post Text
+
 ERP is not enough when the supply chain is moving
 
 Your ERP can record the transaction. It cannot always coordinate the decision when a truck is delayed, a branch is short and a supplier has changed the promise.
@@ -36,4 +51,16 @@ Follow SupplySync360 for practical thinking on ERP, orchestration and South Afri
 #ERP #SupplyChainExecution #SouthAfricaBusiness #SupplySync360
 
 ## Image Brief
+
 Create a premium 4-image LinkedIn carousel as 4 separate 4:5 portrait images, one image per page, each 1080 x 1350 px. Do not create a PDF and do not place multiple pages in one image. The user will combine the images afterwards. Use SupplySync360 brand styling with deep teal, vivid teal, graphite, mist and restrained signal yellow. Visual direction: realistic South African operations office where traditional record-keeping and live operating coordination can be contrasted without using readable system text. Make each page distinct: title/opener, execution-gap page, ERP-plus-orchestration page and final position page. Keep all on-image text exactly from Visible Text. Avoid fake dashboards, generic icons and clutter.
+
+## Post Notes
+
+Internal campaign notes:
+- Brand: SupplySync360
+- Channel: LinkedIn
+- Asset type: carousel
+- Page count detected: 4
+- Use Visible Text as the exact on-image text source.
+- Use LinkedIn Post Text as the caption/post copy only.
+- Do not display Post Notes in generated images or post copy.

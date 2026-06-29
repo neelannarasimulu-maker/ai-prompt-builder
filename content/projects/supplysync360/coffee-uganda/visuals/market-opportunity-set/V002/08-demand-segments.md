@@ -2,37 +2,34 @@
 
 Show where demand exists across the South African coffee ecosystem.
 
+## Layout Hint
+
+demand_segment_ecosystem
+
+## Background Hint
+
+supplysync360_soft_market_depth
+
 ## Visible Text
 
-### Where Demand Exists In South Africa
-
-Coffee demand is spread across multiple commercial channels.
-
-Priority buyer segments:
-
-Commercial roasters:
-volume, consistency, blend economics
-
-Specialty roasters:
-origin, traceability, quality
-
-Café chains:
-repeatability and branded experience
-
-Hospitality:
-service reliability and guest experience
-
-Office coffee:
-recurring supply and cost efficiency
-
-Private label:
-differentiated products and retailer margin
-
-### Market Insight
-
-The opportunity is not dependent on one buyer group.
-
-SupplySync360 can build a phased portfolio serving both commercial-volume and premium-specialty demand.
+Title: Where Demand Exists In South Africa
+Body: Coffee demand is spread across multiple commercial channels.
+Section: Priority buyer segments
+Title: Commercial roasters
+Item: volume, consistency, blend economics
+Title: Specialty roasters
+Item: origin, traceability, quality
+Title: Café chains
+Item: repeatability and branded experience
+Title: Hospitality
+Item: service reliability and guest experience
+Title: Office coffee
+Item: recurring supply and cost efficiency
+Title: Private label
+Item: differentiated products and retailer margin
+Title: Market Insight
+Body: The opportunity is not dependent on one buyer group.
+Body: SupplySync360 can build a phased portfolio serving both commercial-volume and premium-specialty demand.
 
 ## Image Brief
 

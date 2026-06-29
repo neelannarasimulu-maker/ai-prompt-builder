@@ -2,37 +2,31 @@
 
 Position SupplySync360 as uniquely suited to the opportunity.
 
+## Layout Hint
+
+platform_advantage_map
+
+## Background Hint
+
+supplysync360_soft_market_depth
+
 ## Visible Text
 
-### Why SupplySync360 Is Well Positioned
-
-Traditional coffee importers compete mainly on price, relationships and availability.
-
-SupplySync360 can compete through a stronger operating model:
-
-Supplier coordination
-
-Demand aggregation
-
-Inventory visibility
-
-Order planning
-
-Traceability
-
-Logistics coordination
-
-Buyer pipeline management
-
-Operational reporting
-
-### Strategic Advantage
-
-The opportunity has supply-chain complexity.
-
-SupplySync360 already operates in the world of suppliers, inventory, demand signals and fulfilment coordination.
-
-Coffee can become the first practical use case for a broader East Africa to South Africa trade corridor.
+Title: Why SupplySync360 Is Well Positioned
+Body: Traditional coffee importers compete mainly on price, relationships and availability.
+Title: SupplySync360 can compete through a stronger operating model
+Item: Supplier coordination
+Body: Demand aggregation
+Body: Inventory visibility
+Body: Order planning
+Body: Traceability
+Body: Logistics coordination
+Body: Buyer pipeline management
+Body: Operational reporting
+Title: Strategic Advantage
+Body: The opportunity has supply-chain complexity.
+Body: SupplySync360 already operates in the world of suppliers, inventory, demand signals and fulfilment coordination.
+Body: Coffee can become the first practical use case for a broader East Africa to South Africa trade corridor.
 
 ## Image Brief
 

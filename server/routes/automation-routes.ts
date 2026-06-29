@@ -3,6 +3,7 @@ import type { CreateProjectInput } from "../../src/lib/prompt-builder/project-sc
 import type { ChatGptRpaStartInput } from "../../src/lib/prompt-builder/chatgpt-rpa";
 import type { ChatGptAssistImportInput } from "../../src/lib/prompt-builder/chatgpt-assist";
 import type { DistributionDraft, DistributionRecord } from "../../src/lib/prompt-builder/distribution";
+import { getGeneratedContentAssetUrl } from "../../src/lib/prompt-builder/generated-content-contract";
 import type { MasterFrameMetadata } from "../../src/lib/prompt-builder/project-generated-content-api";
 import type { LocalAppRouteContext } from "../http/local-app-context";
 
@@ -200,13 +201,14 @@ export function registerAutomationRoutes(server: ViteDevServer, context: LocalAp
           const framedArtwork = await renderProductionArtwork(fs.readFileSync(latestDownload.path), body.masterFrame);
           fs.writeFileSync(absolutePath, framedArtwork);
 
-          const relativeFromProjectRoot = contentRelativePath(absolutePath);
+          const routePath = contentRelativePath(absolutePath);
 
           sendJson(res, 200, {
             ok: true,
             filename: path.basename(absolutePath),
-            relativePath: relativeFromProjectRoot,
-            fileUrl: `/project-generated-content/${relativeFromProjectRoot}`,
+            relativePath: routePath,
+            routePath,
+            fileUrl: getGeneratedContentAssetUrl(routePath),
             sourcePath: latestDownload.path,
             savedAt: new Date().toISOString(),
           });

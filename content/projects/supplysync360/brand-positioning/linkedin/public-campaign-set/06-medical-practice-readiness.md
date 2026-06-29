@@ -1,7 +1,21 @@
 ## Intent
+
 Create a high-impact LinkedIn carousel for SupplySync360 that positions medical practice readiness as an operational supply-chain discipline, not a back-office admin task. The post should speak to practice owners, practice managers, nurse leads and healthcare operations teams who need procedure-day confidence without heavy enterprise complexity. Create the asset as 4 separate LinkedIn carousel images in 4:5 portrait format so the images can be combined afterwards.
 
+## LinkedIn Format
+
+linkedin_carousel
+
+## Layout Hint
+
+medical_readiness_workflow_carousel
+
+## Background Hint
+
+supplysync360_healthcare_readiness_depth
+
 ## Visible Text
+
 Page 1 Title: Medical Practice Readiness Is a Supply-Chain Workflow
 Page 1 Body: A booked procedure is not operationally ready until the required consumables, room stock, supplier follow-up and evidence are ready too.
 Page 1 Footer: SupplySync360 | Visibility. Intelligence. Action. Control.
@@ -19,6 +33,7 @@ Page 4 Body: Connect booked demand, consumables, stock locations, supplier follo
 Page 4 Footer: Less scramble. Better readiness. Clearer accountability.
 
 ## LinkedIn Post Text
+
 Medical practice operations often carry a quiet supply-chain risk.
 
 The appointment book says the day is planned. The clinical team is ready. The patient flow looks manageable. But the supply side may still be unresolved: consumables not reserved, room stock not checked, supplier follow-up not closed, substitutions not approved, or responsibility sitting in a WhatsApp trail.
@@ -36,6 +51,18 @@ For healthcare operators, readiness is not only clinical. It is operational.
 #MedicalPractice #HealthcareOperations #ProcedureReadiness #SupplyChainVisibility #SupplySync360
 
 ## Image Brief
+
 Create a premium 4-image LinkedIn carousel as 4 separate 4:5 portrait images, one image per page, each 1080 x 1350 px. Do not create a PDF and do not place multiple pages in one image. The user will combine the images afterwards. Use official SupplySync360 logo asset only, preserving aspect ratio and avoiding redraw, recolour, crop or stretch. Use deep teal, vivid teal, graphite, mist and restrained signal yellow. Each page must feel different but part of one system.
 
 Visual direction: realistic South African medical-practice operations environment, not hospital drama. Show a practice manager, nurse lead and admin coordinator around a clean prep area with consumable trays, appointment demand cues, supplier tote, room-stock shelf and a missing-item checkpoint. Use subtle non-readable overlays to show demand flowing into readiness checks, stock visibility, supplier status and closure evidence. Keep all on-image text exactly from Visible Text. Avoid fake dashboards, readable patient data, medical brand names, exaggerated emergency scenes, generic icons and clutter.
+
+## Post Notes
+
+Internal campaign notes:
+- Brand: SupplySync360
+- Channel: LinkedIn
+- Asset type: carousel
+- Page count detected: 4
+- Use Visible Text as the exact on-image text source.
+- Use LinkedIn Post Text as the caption/post copy only.
+- Do not display Post Notes in generated images or post copy.

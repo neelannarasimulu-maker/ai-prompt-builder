@@ -64,17 +64,19 @@ describe("generated content UI helpers", () => {
     expect(files.filter((item) => (item.versionLabel || "Unversioned") === "Unversioned").map((item) => item.id)).toEqual(["plain"]);
   });
 
-  it("names delivery exports from brand, project and version", () => {
+  it("names delivery exports from brand, project, content set and version", () => {
     expect(getDeliveryPackFilenameBase({
       brandLabel: "Thenga",
       projectLabel: "Standard Bank Pitch",
+      contentSetLabel: "Pitch Set",
       versionLabel: "Version 03",
-    })).toBe("thenga-standard-bank-pitch-version-03");
+    })).toBe("thenga-standard-bank-pitch-pitch-set-version-03");
 
     expect(getDeliveryPackFilenameBase({
       brandLabel: "SupplySync360",
       projectLabel: "Executive Overview",
+      contentSetLabel: "Board Pack",
       versionLabel: "Version 1.0",
-    })).toBe("supplysync360-executive-overview-version-1-0");
+    })).toBe("supplysync360-executive-overview-board-pack-version-1-0");
   });
 });

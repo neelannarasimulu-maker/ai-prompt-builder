@@ -1,7 +1,21 @@
 ## Intent
+
 Create a memorable LinkedIn carousel that uses entertainment venues as a high-pressure example of supply-chain execution. The post should show that SupplySync360 is not only inventory software; it is an operating layer for timed demand, stock movement, supplier handoffs and revenue protection. Create the asset as 5 separate LinkedIn carousel images in 4:5 portrait format so the images can be combined afterwards.
 
+## LinkedIn Format
+
+linkedin_carousel
+
+## Layout Hint
+
+live_event_operations_carousel
+
+## Background Hint
+
+supplysync360_live_operations_depth
+
 ## Visible Text
+
 Page 1 Title: Entertainment Venues Are Supply Chains With a Live Clock
 Page 1 Body: A sold-out show can still leak revenue if bars, merchandise, VIP stock and supplier handoffs are not coordinated in real time.
 Page 1 Footer: SupplySync360 | Visibility. Intelligence. Action. Control.
@@ -23,6 +37,7 @@ Page 5 Body: Connect event demand, venue stock, supplier fulfilment, movement ev
 Page 5 Footer: Protect the moment while it is still live.
 
 ## LinkedIn Post Text
+
 Entertainment venues are an underrated supply-chain case study.
 
 A venue can have the crowd, the artists, the sponsors and the energy, then still lose value because operating signals are not connected quickly enough.
@@ -40,6 +55,18 @@ Some supply chains have a month to recover. Some have fifteen minutes.
 #EntertainmentOperations #VenueManagement #SupplyChainExecution #RevenueProtection #SupplySync360
 
 ## Image Brief
+
 Create a premium 5-image LinkedIn carousel as 5 separate 4:5 portrait images, one image per page, each 1080 x 1350 px. Do not create a PDF and do not place multiple pages in one image. The user will combine the images afterwards. Use the official SupplySync360 logo asset for chrome only. Preserve logo aspect ratio and do not redraw, recolour, crop or stretch. Use deep teal, vivid teal, graphite, mist and restrained signal yellow.
 
 Visual direction: dynamic South African entertainment-venue operations during a live event. Stage glow and crowd energy should sit in the distance while operational control sits in the foreground: concession stock, merchandise crates, VIP service items, back-of-house runner workflow, supplier handoff and restock exception. Make each page visually distinct: live-clock title page, compressed demand window, signal map, action routing page and convergence page. Keep all on-image text exactly from Visible Text. Avoid readable event names, brand logos, alcohol emphasis, fake dashboards and clutter.
+
+## Post Notes
+
+Internal campaign notes:
+- Brand: SupplySync360
+- Channel: LinkedIn
+- Asset type: carousel
+- Page count detected: 5
+- Use Visible Text as the exact on-image text source.
+- Use LinkedIn Post Text as the caption/post copy only.
+- Do not display Post Notes in generated images or post copy.

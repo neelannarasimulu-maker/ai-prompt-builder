@@ -8,7 +8,7 @@ export const promptClaritySkill = defineBuiltInSkill({
   description: "Surfaces existing warnings and empty prompt statistics as advisory findings.",
   execute({ buildOutput }) {
     const findings = buildOutput.warnings.map((warning, index) =>
-      finding(id, `compiler-warning-${index + 1}`, warning, "warning")
+      finding(id, `compiler-warning-${index + 1}`, warning, "info")
     );
 
     if (buildOutput.promptStats.words === 0) {

@@ -1,7 +1,21 @@
 ## Intent
+
 Create a LinkedIn carousel that reframes South African informal and SME retail as operationally sophisticated, cash-sensitive and supply-chain exposed. The post should avoid stereotypes and position SupplySync360 as practical operating technology for stock flow, supplier reliability and replenishment discipline. Create the asset as 4 separate LinkedIn carousel images in 4:5 portrait format so the images can be combined afterwards.
 
+## LinkedIn Format
+
+linkedin_carousel
+
+## Layout Hint
+
+sme_retail_control_carousel
+
+## Background Hint
+
+supplysync360_retail_depth
+
 ## Visible Text
+
 Page 1 Title: Informal Retail Is Sophisticated, Even When the Tools Are Not
 Page 1 Body: South African SME retail does not need software theatre. It needs visible stock flow, supplier reliability and simple replenishment discipline.
 Page 1 Footer: SupplySync360 | Visibility. Intelligence. Action. Control.
@@ -19,6 +33,7 @@ Page 4 Body: Support supplier visibility, product publishing, linked businesses,
 Page 4 Footer: Built for real operating environments.
 
 ## LinkedIn Post Text
+
 Informal and SME retail is often described as if it is simple.
 
 It is not.
@@ -43,6 +58,18 @@ The future of retail operations is not only bigger systems. It is better operati
 #InformalRetail #SMESupplyChains #RetailOperations #SupplyChainSouthAfrica #SupplySync360
 
 ## Image Brief
+
 Create a premium 4-image LinkedIn carousel as 4 separate 4:5 portrait images, one image per page, each 1080 x 1350 px. Do not create a PDF and do not place multiple pages in one image. The user will combine the images afterwards. Use official SupplySync360 logo asset only, preserving aspect ratio and avoiding redraw, recolour, crop or stretch. Use deep teal and graphite with warmer retail lighting, mist panels and one restrained yellow signal per page.
 
 Visual direction: South African SME retail supply scene with compact shop floor, delivery crate, back-room shelves, mobile stock check, supplier handoff, fast-moving replenishment cues and owner-led decision-making. The visual must communicate disciplined hustle and local operational intelligence, not poverty or stereotype. Use teal movement paths from supplier delivery to shelf to reorder decision. Keep all on-image text exactly from Visible Text. Avoid flags, caricatures, fake app text, unreadable clutter, brand marks and generic stock-photo smiles.
+
+## Post Notes
+
+Internal campaign notes:
+- Brand: SupplySync360
+- Channel: LinkedIn
+- Asset type: carousel
+- Page count detected: 4
+- Use Visible Text as the exact on-image text source.
+- Use LinkedIn Post Text as the caption/post copy only.
+- Do not display Post Notes in generated images or post copy.

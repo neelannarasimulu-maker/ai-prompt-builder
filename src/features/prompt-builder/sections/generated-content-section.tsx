@@ -54,7 +54,7 @@ export function GeneratedContentSection({ controller }: { controller: PromptBuil
                         <strong>{file.displayName || basenameWithoutExtension(file.filename)}</strong>
                         <span>{file.versionLabel || "Unversioned"}</span>
                         <small>{categoryLabel(file.category)} | {file.fileType} | {formatFileSize(file.sizeBytes)}</small>
-                        <code>{file.generatedRelativePath}</code>
+                        <code>{file.projectRelativePath || file.generatedRelativePath}</code>
                       </button>
                       {workflowMode !== "export" && <button
                         type="button"
@@ -82,7 +82,7 @@ export function GeneratedContentSection({ controller }: { controller: PromptBuil
               <div className="preview-header">
                 <div>
                   <h3>{filePreviewTitle(selectedGeneratedFile)}</h3>
-                  {selectedGeneratedFile && <p>{selectedGeneratedFile.relativePath}</p>}
+                  {selectedGeneratedFile && <p>{selectedGeneratedFile.routePath || selectedGeneratedFile.relativePath}</p>}
                 </div>
                 {selectedGeneratedFile && <a className="secondary-button open-link" href={selectedGeneratedFile.fileUrl} target="_blank" rel="noreferrer">Open file</a>}
               </div>

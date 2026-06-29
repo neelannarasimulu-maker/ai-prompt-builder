@@ -1,9 +1,56 @@
+import { useMemo } from "react";
 import type { BackgroundTheme } from "../../../lib/prompt-builder/background-themes";
 import type { GeneratedContentCategory } from "../../../lib/prompt-builder/project-generated-content-api";
+import { detectSourceVersions, getUniqueFolderNames } from "../../../lib/prompt-builder/source-version-detection";
 import type { PromptBuilderController } from "../controllers/prompt-builder-view";
 
 export function ProjectSelectionSection({ controller }: { controller: PromptBuilderController }) {
-  const { backgroundPresets, backgroundThemes, compiled, contentSets, contentTypeLabel, contentTypes, documentBackgroundPresets, handleUpdateStorageRoot, isDocumentLike, layoutPresets, logoPreviewPath, profileList, selectedBackgroundPresetId, selectedBackgroundTheme, selectedBrand, selectedContentPath, selectedContentSet, selectedContentType, selectedDocumentBackgroundPresetId, selectedLayoutPresetId, selectedOutputProfileId, selectedProjectLogoAsset, setSelectedBackgroundPresetId, setSelectedBackgroundTheme, setSelectedContentPath, setSelectedContentSet, setSelectedContentType, setSelectedDocumentBackgroundPresetId, setSelectedLayoutPresetId, setSelectedOutputProfileId, setStorageRoot, storageRoot, storageState, visibleContentFiles, workflowMode } = controller;
+  const { backgroundPresets, backgroundThemes, browserFsAvailable, compiled, contentSets, contentTypeLabel, contentTypes, documentBackgroundPresets, handleUpdateStorageRoot, isDocumentLike, layoutPresets, logoPreviewPath, profileList, selectedBackgroundPresetId, selectedBackgroundTheme, selectedBrand, selectedContentPath, selectedContentSet, selectedContentType, selectedDocumentBackgroundPresetId, selectedLayoutPresetId, selectedOutputProfileId, selectedProjectLogoAsset, setSelectedBackgroundPresetId, setSelectedBackgroundTheme, setSelectedContentPath, setSelectedContentSet, setSelectedContentType, setSelectedDocumentBackgroundPresetId, setSelectedLayoutPresetId, setSelectedOutputProfileId, setStorageRoot, storageRoot, storageState, visibleContentFiles, workflowMode, workspaceKind } = controller;
+
+  // Detect multiple source versions for current content set
+  const sourceVersions = useMemo(
+    () => detectSourceVersions(visibleContentFiles),
+    [visibleContentFiles]
+  );
+  const currentVersions = sourceVersions.get(selectedContentSet) ?? [];
+
+  // Extract unique folder names from versions
+  const uniqueFolders = useMemo(
+    () => getUniqueFolderNames(currentVersions),
+    [currentVersions]
+  );
+
+  // Extract current folder from selected path
+  const currentFolderName = useMemo(() => {
+    const pathParts = selectedContentPath.replace(/\\/g, '/').split('/');
+    for (let i = pathParts.length - 2; i >= 0; i--) {
+      const part = pathParts[i];
+      if (part.match(/^[_-]?v?\d+$/i)) {
+        return part;
+      }
+    }
+    return '';
+  }, [selectedContentPath]);
+
+  // Filter files to only show those from current folder
+  const filteredContentFiles = useMemo(
+    () => visibleContentFiles.filter((f) => {
+      if (!currentFolderName) return true; // No filter if no folder selected
+      return f.path.includes(`/${currentFolderName}/`) || f.path.includes(`\\${currentFolderName}\\`);
+    }),
+    [visibleContentFiles, currentFolderName]
+  );
+
+  // Handle version folder change
+  const handleVersionChange = (newFolderName: string) => {
+    // Find first file in new folder
+    const fileInFolder = currentVersions.find(
+      (v) => v.folderName === newFolderName
+    );
+    if (fileInFolder) {
+      setSelectedContentPath(fileInFolder.path);
+    }
+  };
   return <>
         {(workflowMode === "create" || workflowMode === "run") && (
         <aside className="panel sidebar-panel">
@@ -27,9 +74,17 @@ export function ProjectSelectionSection({ controller }: { controller: PromptBuil
 
             <label className="field"><span>Source File</span>
               <select value={selectedContentPath} onChange={(e) => setSelectedContentPath(e.target.value)}>
-                {visibleContentFiles.map((entry) => <option key={entry.path} value={entry.path}>{entry.label}</option>)}
+                {filteredContentFiles.map((entry) => <option key={entry.path} value={entry.path}>{entry.label}</option>)}
               </select>
             </label>
+
+            {uniqueFolders.length > 0 && (
+              <label className="field"><span>Source Version</span>
+                <select value={currentFolderName} onChange={(e) => handleVersionChange(e.target.value)}>
+                  {uniqueFolders.map((folder) => <option key={folder.folderName} value={folder.folderName}>{folder.folderName}</option>)}
+                </select>
+              </label>
+            )}
 
             <label className="field"><span>Output Profile</span>
               <select value={selectedOutputProfileId} onChange={(e) => setSelectedOutputProfileId(e.target.value)}>
@@ -72,13 +127,14 @@ export function ProjectSelectionSection({ controller }: { controller: PromptBuil
           <details className="storage-settings" open={storageState !== "available"}>
             <summary><span>Local storage</span><strong className={`connection-${storageState}`}>{storageState}</strong></summary>
             <div className="storage-settings-body">
-              {storageState === "read-only" && <p className="storage-notice">Local write tools are unavailable in this hosted build. Run <code>npm run dev</code> on your computer to create projects, save files, upload assets and export documents.</p>}
-              <label className="field"><span>Content root</span><input value={storageRoot} onChange={(event) => setStorageRoot(event.target.value)} disabled={storageState !== "available"} placeholder="C:\\Users\\name\\OneDrive\\Prompt Builder\\content" /></label>
+              {storageState === "read-only" && browserFsAvailable && <p className="storage-notice">This hosted build can still work with your local files if you connect a local <code>content</code> folder in the browser. Choose the folder once, then the app can read and save Markdown files inside it.</p>}
+              {storageState === "read-only" && !browserFsAvailable && <p className="storage-notice">Local write tools are unavailable in this browser. Run <code>npm run dev</code> on your computer to create projects, save files, upload assets and export documents.</p>}
+              <label className="field"><span>{workspaceKind === "browser" ? "Connected local folder" : "Content root"}</span><input value={storageRoot} onChange={(event) => setStorageRoot(event.target.value)} disabled={storageState !== "available" && !browserFsAvailable} placeholder={browserFsAvailable ? "Choose your local content folder" : "C:\\Users\\name\\OneDrive\\Prompt Builder\\content"} /></label>
               <div className="button-row">
-                <button className="secondary-button compact-button" type="button" disabled={storageState !== "available"} onClick={() => handleUpdateStorageRoot(false)}>Use root</button>
-                <button className="quiet-button compact-button" type="button" disabled={storageState !== "available"} onClick={() => handleUpdateStorageRoot(true)}>Initialize root</button>
+                <button className="secondary-button compact-button" type="button" disabled={storageState !== "available" && !browserFsAvailable} onClick={() => handleUpdateStorageRoot(false)}>{browserFsAvailable ? "Connect folder" : "Use root"}</button>
+                <button className="quiet-button compact-button" type="button" disabled={storageState !== "available" && !browserFsAvailable} onClick={() => handleUpdateStorageRoot(true)}>{browserFsAvailable ? "Connect + initialize" : "Initialize root"}</button>
               </div>
-              <p className="field-note">The main app writes to this folder. Initialization copies missing brand seed files without overwriting existing content.</p>
+              <p className="field-note">{browserFsAvailable ? "Choose the local Prompt Builder content folder itself, or a parent folder that contains a content folder. Initialization creates missing folders such as projects when needed." : "The main app writes to this folder. Initialization copies missing brand seed files without overwriting existing content."}</p>
             </div>
           </details>
 

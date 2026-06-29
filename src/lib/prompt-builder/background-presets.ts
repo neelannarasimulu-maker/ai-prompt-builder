@@ -100,6 +100,11 @@ export const backgroundPresets: BackgroundPreset[] = [
     label: "Light Executive Canvas",
     prompt: "Use a bright executive canvas with subtle brand tinting, fine structure and generous high-contrast reading space.",
   },
+  {
+    id: "open_avbob_institutional_depth",
+    label: "Open / AVBOB Institutional Depth",
+    prompt: "Use a light-to-medium institutional financial-services canvas with navy, teal and restrained green energy, soft atmospheric depth and strongly protected reading zones for executive content.",
+  },
 ];
 
 export function getBackgroundPreset(id?: string): BackgroundPreset {

@@ -1,72 +1,52 @@
-# References And Data Notes
+## Intent
 
-These notes support the statistics used in the Coffee Import Opportunity Market Research Deck.
+Provide the reference and data notes that support the coffee import opportunity market research deck.
 
-## Core 2024 South Africa Coffee Import Statistics
+## Layout Hint
 
-Source: World Bank WITS / UN Comtrade data for South Africa imports in 2024.
+data_reference_notes
+
+## Background Hint
+
+supplysync360_soft_market_depth
 
 ## Visible Text
 
-### HS 090111: Coffee, not roasted or decaffeinated
+Title: References And Data Notes
+Body: These notes support the statistics used in the Coffee Import Opportunity Market Research Deck.
 
-South Africa imported US$98.398 million and 22.694 million kg.
+Section: Core 2024 South Africa Coffee Import Statistics
+Body: Source: World Bank WITS / UN Comtrade data for South Africa imports in 2024.
 
-Top origins shown in the deck:
-- Brazil: US$48.982 million and 13.064 million kg.
-- Ethiopia: US$8.298 million and 1.387 million kg.
-- Tanzania: US$5.601 million and 1.157 million kg.
-- Uganda: US$4.930 million and 1.231 million kg.
-- Guatemala: US$4.749 million and 808,713 kg.
+Title: HS 090111: Coffee, not roasted or decaffeinated
+Metric: South Africa imported US$98.398 million and 22.694 million kg.
+Item: Brazil: US$48.982 million and 13.064 million kg.
+Item: Ethiopia: US$8.298 million and 1.387 million kg.
+Item: Tanzania: US$5.601 million and 1.157 million kg.
+Item: Uganda: US$4.930 million and 1.231 million kg.
+Item: Guatemala: US$4.749 million and 808,713 kg.
 
-URL:
-https://wits.worldbank.org/trade/comtrade/en/country/ZAF/year/2024/tradeflow/Imports/partner/ALL/product/090111
+Title: HS 090121: Roasted coffee, not decaffeinated
+Metric: South Africa imported US$20.543 million and 1.417 million kg.
 
-### HS 090121: Roasted coffee, not decaffeinated
+Title: HS 090112: Decaffeinated coffee, not roasted
+Metric: South Africa imported US$2.146 million and 396,986 kg.
 
-South Africa imported US$20.543 million and 1.417 million kg.
+Title: HS 090122: Roasted, decaffeinated coffee
+Metric: South Africa imported US$998,460 and 43,337 kg.
 
-URL:
-https://wits.worldbank.org/trade/comtrade/en/country/ZAF/year/2024/tradeflow/Imports/partner/ALL/product/090121
+Section: Calculated Presentation Figures
+Metric: Total four-category coffee import volume: 24,551,143 kg.
+Metric: Non-decaffeinated green coffee share: approximately 92%.
+Metric: Uganda implied green coffee import unit value: approximately US$4.01/kg.
+Metric: Ethiopia implied green coffee import unit value: approximately US$5.98/kg.
 
-### HS 090112: Decaffeinated coffee, not roasted
+Section: Additional Sources
+Item: Reuters, Uganda coffee export context
+Item: SARS Customs and Excise Tariff Schedule, Chapter 9
+Item: SARS Duties and Taxes for Importers
+Item: South African coffee, chicory and related product regulations
 
-South Africa imported US$2.146 million and 396,986 kg.
+## Image Brief
 
-URL:
-https://wits.worldbank.org/trade/comtrade/en/country/ZAF/year/2024/tradeflow/Imports/partner/ALL/product/090112
-
-### HS 090122: Roasted, decaffeinated coffee
-
-South Africa imported US$998,460 and 43,337 kg.
-
-URL:
-https://wits.worldbank.org/trade/comtrade/en/country/ZAF/year/2024/tradeflow/Imports/partner/ALL/product/090122
-
-## Calculated Presentation Figures
-
-Total four-category coffee import volume:
-22,694,000 + 1,416,820 + 396,986 + 43,337 = 24,551,143 kg.
-
-Non-decaffeinated green coffee share:
-22,694,000 / 24,551,143 = approximately 92%.
-
-Uganda implied green coffee import unit value:
-US$4.93026m / 1.23082m kg = approximately US$4.01/kg.
-
-Ethiopia implied green coffee import unit value:
-US$8.29833m / 1.38719m kg = approximately US$5.98/kg.
-
-## Additional Sources
-
-Reuters, Uganda coffee export context:
-https://www.reuters.com/markets/commodities/ugandas-february-coffee-exports-jump-28-yy-high-prices-2025-03-26/
-
-SARS Customs and Excise Tariff Schedule, Chapter 9:
-https://www.sars.gov.za/wp-content/uploads/Legal/SCEA1964/Legal-LPrim-CE-Sch1P1Chpt1-to-99-Schedule-No-1-Part-1-Chapters-1-to-99.pdf
-
-SARS Duties and Taxes for Importers:
-https://www.sars.gov.za/customs-and-excise/duties-and-taxes/duties-and-taxes-for-importers/
-
-South African coffee, chicory and related product regulations:
-https://www.gov.za/sites/default/files/gcis_document/202010/43856rg11190gon1154.pdf
+Create a clear executive reference-and-data-notes slide with source cards, key import statistics and calculated presentation figures. Use a structured evidence-board layout with restrained SupplySync360 styling. Keep the focus on credibility, traceability and readable source categories. Do not add unsupported sources or new statistics.

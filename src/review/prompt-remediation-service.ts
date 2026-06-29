@@ -20,6 +20,7 @@ const codeCategories: Record<string, RemediationCategory> = {
   "missing-document-source": "source-content",
   "missing-source-of-truth-section": "source-content",
   "legacy-sections-ignored": "source-content",
+  filename: "output-contract",
   "missing-logo": "brand-rules",
   "missing-logo-asset": "brand-rules",
   "missing-header": "brand-rules",
@@ -61,6 +62,26 @@ function categoryFromSource(source: string): RemediationCategory {
   return "prompt-clarity";
 }
 
+function suggestedFixForFinding(finding: PromptReviewFinding, category: RemediationCategory): string {
+  if (finding.code === "filename") {
+    return "Select a generated file in Review so the app can compare its filename against the suggested export filename.";
+  }
+
+  if (finding.code.startsWith("compiler-warning-")) {
+    if (/detected \d+ content items/i.test(finding.message)) {
+      return "Keep the prompt, but use a dense card-grid or proof-point layout hint so the visual groups the many content items into distinct cards or lanes.";
+    }
+    if (/visible text lines are long/i.test(finding.message)) {
+      return "Keep the exact wording, but use wider text zones, compact card formatting, or shorter line breaks in the source where wording can safely be split without changing meaning.";
+    }
+    if (/semantic visible text detected/i.test(finding.message)) {
+      return "Preserve the semantic structure explicitly: keep partner roles, metrics, and investor framing in separate cards, rows, or lanes rather than one generic text block.";
+    }
+  }
+
+  return categoryFixes[category];
+}
+
 export function remediationCategoryLabel(category: RemediationCategory): string {
   return categoryLabels[category];
 }
@@ -83,7 +104,7 @@ export function createRemediationSuggestions(
       source: finding.source,
       category,
       title: `${categoryLabels[category]}: ${finding.message}`,
-      suggestedFix: categoryFixes[category],
+      suggestedFix: suggestedFixForFinding(finding, category),
     });
   }
 

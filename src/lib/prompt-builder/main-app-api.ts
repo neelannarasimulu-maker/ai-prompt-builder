@@ -4,6 +4,15 @@ import type {
   RuntimeContentFile,
   RuntimeProject,
 } from "./project-scaffold";
+import {
+  browserWorkspaceAvailable,
+  connectBrowserWorkspace,
+  createBrowserProject,
+  getBrowserWorkspaceStatus,
+  listBrowserRuntimeProjects,
+  loadBrowserRuntimeProject,
+  previewBrowserProjectScaffold,
+} from "./browser-workspace";
 
 export type StorageStatus = {
   ok: boolean;
@@ -12,6 +21,8 @@ export type StorageStatus = {
   writable?: boolean;
   version?: string;
   error?: string;
+  browserFsAvailable?: boolean;
+  workspaceKind?: "server" | "browser";
 };
 
 const unavailableMessage = "Local storage is available when the app is running with npm run dev.";
@@ -43,7 +54,11 @@ async function jsonRequest<T>(path: string, init?: RequestInit): Promise<T> {
 }
 
 export function getStorageStatus(): Promise<StorageStatus> {
-  return jsonRequest<StorageStatus>("/api/storage/status");
+  return jsonRequest<StorageStatus>("/api/storage/status").catch(async () => {
+    const browserStatus = await getBrowserWorkspaceStatus();
+    if (browserStatus) return browserStatus;
+    throw new Error(unavailableMessage);
+  });
 }
 
 export function updateStorageRoot(contentRoot: string, initialize = false): Promise<StorageStatus> {
@@ -51,6 +66,9 @@ export function updateStorageRoot(contentRoot: string, initialize = false): Prom
     method: "PUT",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ contentRoot, initialize }),
+  }).catch(async () => {
+    if (!browserWorkspaceAvailable()) throw new Error(unavailableMessage);
+    return connectBrowserWorkspace(initialize);
   });
 }
 
@@ -59,7 +77,7 @@ export function previewProjectScaffold(input: CreateProjectInput): Promise<Proje
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(input),
-  });
+  }).catch(() => Promise.resolve(previewBrowserProjectScaffold(input)));
 }
 
 export function createProject(input: CreateProjectInput): Promise<{
@@ -68,15 +86,26 @@ export function createProject(input: CreateProjectInput): Promise<{
   files: RuntimeContentFile[];
   preview: ProjectScaffoldPreview;
 }> {
-  return jsonRequest("/api/projects", {
+  return jsonRequest<{
+    ok: boolean;
+    project: RuntimeProject;
+    files: RuntimeContentFile[];
+    preview: ProjectScaffoldPreview;
+  }>("/api/projects", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(input),
+  }).catch(async () => {
+    if (!browserWorkspaceAvailable()) throw new Error(unavailableMessage);
+    return createBrowserProject(input);
   });
 }
 
 export function listRuntimeProjects(): Promise<{ ok: boolean; projects: RuntimeProject[] }> {
-  return jsonRequest("/api/projects");
+  return jsonRequest<{ ok: boolean; projects: RuntimeProject[] }>("/api/projects").catch(async () => {
+    if (!browserWorkspaceAvailable()) throw new Error(unavailableMessage);
+    return listBrowserRuntimeProjects();
+  });
 }
 
 export function loadRuntimeProject(brandId: string, projectId: string): Promise<{
@@ -84,5 +113,12 @@ export function loadRuntimeProject(brandId: string, projectId: string): Promise<
   project: RuntimeProject;
   files: RuntimeContentFile[];
 }> {
-  return jsonRequest(`/api/projects/${encodeURIComponent(brandId)}/${encodeURIComponent(projectId)}`);
+  return jsonRequest<{
+    ok: boolean;
+    project: RuntimeProject;
+    files: RuntimeContentFile[];
+  }>(`/api/projects/${encodeURIComponent(brandId)}/${encodeURIComponent(projectId)}`).catch(async () => {
+    if (!browserWorkspaceAvailable()) throw new Error(unavailableMessage);
+    return loadBrowserRuntimeProject(brandId, projectId);
+  });
 }

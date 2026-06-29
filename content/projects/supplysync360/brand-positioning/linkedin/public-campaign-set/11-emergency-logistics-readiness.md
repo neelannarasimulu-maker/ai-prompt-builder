@@ -1,7 +1,21 @@
 ## Intent
+
 Create a LinkedIn carousel that positions emergency and field-service logistics as a readiness problem before it becomes a dispatch problem. The post should remain operational and avoid claims about clinical outcomes. It should show SS360 strength in traceable movement, assignment, QR-linked proof and handover evidence. Create the asset as 4 separate LinkedIn carousel images in 4:5 portrait format so the images can be combined afterwards.
 
+## LinkedIn Format
+
+linkedin_carousel
+
+## Layout Hint
+
+emergency_readiness_carousel
+
+## Background Hint
+
+supplysync360_readiness_depth
+
 ## Visible Text
+
 Page 1 Title: Emergency Logistics Fails Before Dispatch If Readiness Is Invisible
 Page 1 Body: In time-critical operations, the real question is not only where the vehicle is. It is whether the right stock was ready before movement began.
 Page 1 Footer: SupplySync360 | Visibility. Intelligence. Action. Control.
@@ -19,6 +33,7 @@ Page 4 Body: Support inventory assignment, transit status, QR-linked batches, pr
 Page 4 Footer: Ready before movement. Traceable after handover.
 
 ## LinkedIn Post Text
+
 Emergency and field-service logistics are often judged at the moment of dispatch.
 
 But many failures begin earlier.
@@ -36,6 +51,18 @@ In time-critical logistics, control starts before movement.
 #OperationalReadiness #EmergencyLogistics #ProofOfReceipt #SupplyChainExecution #SupplySync360
 
 ## Image Brief
+
 Create a premium 4-image LinkedIn carousel as 4 separate 4:5 portrait images, one image per page, each 1080 x 1350 px. Do not create a PDF and do not place multiple pages in one image. The user will combine the images afterwards. Use official SupplySync360 logo asset only, preserving aspect ratio and avoiding redraw, recolour, crop or stretch. Use deep teal and graphite backgrounds with mist panels and restrained signal yellow.
 
 Visual direction: high-readiness South African emergency logistics prep area with critical supply packs, sealed handover bags, dispatch tablet, QR scan checkpoint and receiving evidence. Keep energy urgent but controlled. Use teal readiness paths connecting pack completeness, dispatch timing, handover and proof. Use one yellow missing-proof signal. Keep all on-image text exactly from Visible Text. Avoid medical gore, patient imagery, ambulance clichés, readable patient data, fake dashboards and clutter.
+
+## Post Notes
+
+Internal campaign notes:
+- Brand: SupplySync360
+- Channel: LinkedIn
+- Asset type: carousel
+- Page count detected: 4
+- Use Visible Text as the exact on-image text source.
+- Use LinkedIn Post Text as the caption/post copy only.
+- Do not display Post Notes in generated images or post copy.

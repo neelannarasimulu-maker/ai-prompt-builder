@@ -1,7 +1,21 @@
 ## Intent
+
 Create a continuity LinkedIn carousel for SupplySync360 post 01. Preserve the original published positioning, but structure the asset as 5 separate LinkedIn carousel images that can be combined after generation. The post should frame lead-time volatility as a South African executive operating risk and position SupplySync360 as the practical operating layer for early exception visibility and coordinated response.
 
+## LinkedIn Format
+
+linkedin_carousel
+
+## Layout Hint
+
+lead_time_risk_carousel
+
+## Background Hint
+
+supplysync360_corridor_depth
+
 ## Visible Text
+
 Page 1 Title: Average Lead Time Is No Longer Enough
 Page 1 Body: In South Africa, supply risk is not only a supplier issue. It is a ports, rail, road, water, power and coordination issue.
 Page 1 Footer: SupplySync360 | Visibility. Intelligence. Action. Control.
@@ -23,6 +37,7 @@ Page 5 Body: SupplySync360 connects moving supply signals into one operating lay
 Page 5 Footer: Practical control for South African execution reality.
 
 ## LinkedIn Post Text
+
 South African supply chains cannot plan around average lead times anymore
 
 In South Africa, lead-time risk is not only a supplier problem. It is a ports, rail, road, water, power and coordination problem.
@@ -44,4 +59,16 @@ Follow SupplySync360 for practical South African supply-chain operating insights
 #SupplyChainSouthAfrica #LeadTimeRisk #SupplyChainVisibility #FreightLogistics #SupplySync360
 
 ## Image Brief
+
 Create a premium 5-image LinkedIn carousel as 5 separate 4:5 portrait images, one image per page, each 1080 x 1350 px. Do not create a PDF and do not place multiple pages in one image. The user will combine the images afterwards. Use official SupplySync360 brand styling with deep teal, vivid teal, graphite, mist and restrained signal yellow. Visual direction: realistic South African executive supply-chain context with operations-team coordination, corridor uncertainty, inbound visibility and one disciplined exception signal. Make each page visually distinct: executive opener, variance/range-of-outcomes page, decision-question page, signal-map page and convergence-position page. Keep all on-image text exactly from Visible Text. Avoid readable fake dashboards, port logos, stereotypes, clutter and unsupported claims.
+
+## Post Notes
+
+Internal campaign notes:
+- Brand: SupplySync360
+- Channel: LinkedIn
+- Asset type: carousel
+- Page count detected: 5
+- Use Visible Text as the exact on-image text source.
+- Use LinkedIn Post Text as the caption/post copy only.
+- Do not display Post Notes in generated images or post copy.

@@ -6,6 +6,7 @@ import pptxgen from "pptxgenjs";
 import { PDFDocument } from "pdf-lib";
 import { renderLockedMasterFrame, renderLockedDocument } from "../services/rendering-service";
 import { getMasterFrameSpec } from "../../src/lib/prompt-builder/master-frame";
+import { getGeneratedContentAssetUrl } from "../../src/lib/prompt-builder/generated-content-contract";
 import type { MasterFrameMetadata } from "../../src/lib/prompt-builder/project-generated-content-api";
 import {
   normalizeRpaImageFilename,
@@ -756,11 +757,11 @@ async function runChatGptRpaJob(job: ChatGptRpaRuntimeJob, resumeFromWaiting = f
         fs.rmSync(temporaryDownload, { force: true });
       }
 
-      const relativeFromProjectRoot = contentRelativePath(outputPath);
+      const routePath = contentRelativePath(outputPath);
       job.savedFile = {
         filename: path.basename(outputPath),
-        relativePath: relativeFromProjectRoot,
-        fileUrl: `/project-generated-content/${relativeFromProjectRoot}`,
+        relativePath: routePath,
+        fileUrl: getGeneratedContentAssetUrl(routePath),
       };
       setRpaStep(job, "save", "complete", `Saved as ${job.savedFile.filename}.`);
       setRpaJobStatus(job, "complete");
@@ -936,4 +937,3 @@ export function createLocalAppRouteContext() {
 }
 
 export type LocalAppRouteContext = ReturnType<typeof createLocalAppRouteContext>;
-

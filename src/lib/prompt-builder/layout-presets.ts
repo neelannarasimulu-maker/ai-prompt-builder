@@ -66,6 +66,12 @@ export const layoutPresets: LayoutPreset[] = [
       "Use a premium opening layout with a strong headline zone, concise narrative grouping and a supporting visual zone. Best for low-to-medium text.",
   },
   {
+    id: "enterprise_proof_point_snapshot",
+    label: "Enterprise Proof Point Snapshot",
+    prompt:
+      "Use a premium enterprise proof-point composition with a strong investor headline, partner-role cards, programme-scale metric cards and one protected investor-thesis zone. Keep the structure crisp, institutional and easy to scan even with dense executive content.",
+  },
+  {
     id: "hero_scene_overlay",
     label: "Hero Scene Overlay",
     prompt:

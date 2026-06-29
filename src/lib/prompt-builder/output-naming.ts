@@ -58,12 +58,14 @@ export function getSuggestedOutputFilename(input: OutputNamingInput): string {
 export function getDeliveryPackFilenameBase(input: {
   brandLabel?: string;
   projectLabel?: string;
+  contentSetLabel?: string;
   versionLabel?: string;
   fallback?: string;
 }): string {
   const parts = [
     slugifyOutputPart(input.brandLabel),
     slugifyOutputPart(input.projectLabel),
+    slugifyOutputPart(input.contentSetLabel),
     slugifyOutputPart(input.versionLabel || "generated-visuals"),
   ].filter(Boolean);
 

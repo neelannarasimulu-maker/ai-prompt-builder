@@ -110,10 +110,13 @@ export function formatExecutiveReviewSummary(result: PromptReviewResult): string
 
 export function formatPriorityFixes(result: PromptReviewResult): string {
   const dashboard = buildPromptReviewDashboard(result);
-  const priorities = dashboard.priorities.map((issue, index) => [
-    `${index + 1}. [${issue.category.toUpperCase()}] ${issue.message}`,
+  const priorities = dashboard.priorities.map((issue, index) => {
+    const typeTarget = issue.changeType && issue.target ? ` [${issue.changeType} / ${issue.target}]` : "";
+    return [
+    `${index + 1}. [${issue.category.toUpperCase()}] ${issue.message}${typeTarget}`,
     `Suggested fix: ${issue.suggestedFixes[0] || "Review the linked source and rules, then run the review again."}`,
-  ].join("\n"));
+  ].join("\n");
+  });
 
   return [
     "Prompt Quality Review - Priority Fixes",
@@ -123,12 +126,15 @@ export function formatPriorityFixes(result: PromptReviewResult): string {
 
 export function formatFixChecklist(result: PromptReviewResult): string {
   const dashboard = buildPromptReviewDashboard(result);
-  const checklist = dashboard.issues.map((issue, index) => [
-    `[ ] ${index + 1}. ${issue.message}`,
+  const checklist = dashboard.issues.map((issue, index) => {
+    const typeTarget = issue.changeType && issue.target ? ` [${issue.changeType} / ${issue.target}]` : "";
+    return [
+    `[ ] ${index + 1}. ${issue.message}${typeTarget}`,
     `Where to fix: ${issue.guidance.likelySourceSection} (${issue.guidance.confidence} confidence)`,
     `Why it matters: ${issue.guidance.reason}`,
     `Suggested edit: ${issue.guidance.suggestedEditGuidance}`,
-  ].join("\n"));
+  ].join("\n");
+  });
 
   return [
     "Prompt Quality Review - Fix Checklist",

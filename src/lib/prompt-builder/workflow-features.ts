@@ -264,7 +264,8 @@ export function buildBrandQaScorecard(input: {
 export function buildBatchRunManifest(items: BatchPromptItem[]): string {
   return [
     "BATCH GENERATION QUEUE",
-    "Run each item separately in ChatGPT. Save each output using the supplied filename, then import it into the selected content set's _generated/vNNN folder.",
+    "Run each item separately in ChatGPT. Do not ask ChatGPT to complete the whole batch in one response.",
+    "For each item: paste only that item's prompt, wait for that single visual to finish, save it with the supplied filename, then move to the next item.",
     "Do not generate a combined contact sheet, summary deck, wireframe deck, placeholder deck or simplified preview. Each item is a separate finished full-quality visual.",
     "For every item, preserve that item's Scene/Image Brief, background theme, exact visible text, header, footer and logo rules. Keep the deck chrome consistent, but make the body imagery content-specific and dimensional.",
     "",
@@ -272,6 +273,7 @@ export function buildBatchRunManifest(items: BatchPromptItem[]): string {
       `ITEM ${index + 1}: ${item.label}`,
       `Source file: ${item.filename}`,
       `Output filename: ${item.outputFilename}`,
+      "Instruction: create this item as one standalone finished visual only. Do not summarize, combine, queue internally, or simplify it because other items exist.",
       "Prompt:",
       item.prompt,
     ].join("\n")),
@@ -291,7 +293,7 @@ export function buildStyleMemoryPrompt(input: {
     "PROJECT STYLE MEMORY",
     "Use these approved examples as style references for future outputs in this project. Preserve brand chrome and source facts; borrow only composition, pacing, hierarchy and finish quality.",
     "",
-    ...approvedFiles.map((file, index) => `${index + 1}. ${file.displayName || file.filename} (${file.versionLabel || "Unversioned"}) - ${file.generatedRelativePath}`),
+    ...approvedFiles.map((file, index) => `${index + 1}. ${file.displayName || file.filename} (${file.versionLabel || "Unversioned"}) - ${file.projectRelativePath || file.generatedRelativePath}`),
   ].join("\n");
 }
 

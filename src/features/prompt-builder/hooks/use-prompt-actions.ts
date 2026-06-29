@@ -407,6 +407,7 @@ export function usePromptActions(scope: ReturnType<typeof useContentSave>) {
         outputFilename: getDeliveryPackFilenameBase({
           brandLabel: selectedBrand?.label,
           projectLabel: selectedProject.label,
+          contentSetLabel: selectedContentSet,
           versionLabel: selectedGeneratedVersion || "generated-visuals",
         }),
       });

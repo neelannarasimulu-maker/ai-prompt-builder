@@ -45,7 +45,7 @@ function emptyDraft(project: DistributionProjectOption | null, today: string): D
 }
 
 function folderOfGenerated(file: GeneratedContentFile): string {
-  const parts = file.generatedRelativePath.replace(/\\/g, "/").split("/");
+  const parts = (file.projectRelativePath || file.generatedRelativePath || "").replace(/\\/g, "/").split("/");
   return parts.slice(0, -1).join("/") || "Unfiled";
 }
 

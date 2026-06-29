@@ -1,5 +1,6 @@
 import type { PromptReviewResult } from "./prompt-review-types";
 import { createSourceFixGuidance, type SourceFixGuidance } from "./prompt-source-guidance";
+import { classifyFinding, type FindingChangeType, type FindingTarget } from "./prompt-finding-specificity";
 
 export type ReviewDashboardStatus = "Ready" | "Needs Review" | "Needs Fixes";
 
@@ -11,6 +12,8 @@ export type ReviewDashboardIssue = {
   sources: string[];
   suggestedFixes: string[];
   guidance: SourceFixGuidance;
+  changeType?: FindingChangeType;
+  target?: FindingTarget;
 };
 
 export type ReviewDashboardModel = {
@@ -75,7 +78,9 @@ export function buildPromptReviewDashboard(result: PromptReviewResult): ReviewDa
       sources: [finding.source],
       suggestedFixes: [],
     };
-    issueMap.set(key, { ...issue, guidance: createSourceFixGuidance(issue) });
+    const specificity = classifyFinding(finding.code, finding.message, finding.source);
+    const withSpecificity = specificity ? { ...issue, changeType: specificity.changeType, target: specificity.target } : issue;
+    issueMap.set(key, { ...withSpecificity, guidance: createSourceFixGuidance(issue) });
   }
 
   for (const suggestion of result.remediationSuggestions) {

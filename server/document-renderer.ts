@@ -203,7 +203,7 @@ async function renderPdf(input: LockedDocumentRenderInput): Promise<Buffer> {
       y -= 5;
     }
   }
-  return Buffer.from(await pdf.save());
+  return Buffer.from(await pdf.save({ useObjectStreams: true }));
 }
 
 export async function renderLockedDocument(input: LockedDocumentRenderInput): Promise<Buffer> {

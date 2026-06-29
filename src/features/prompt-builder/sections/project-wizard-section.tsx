@@ -11,7 +11,7 @@ export function ProjectWizardSection({ controller }: { controller: PromptBuilder
               <div>
                 <p className="eyebrow">New project | Step {projectWizardStep} of 3</p>
                 <h2 id="project-wizard-title">Create a branded project workspace</h2>
-                <p>The project will be written to the paired local content root and opened immediately.</p>
+                <p>The project will be written to the connected local content workspace and opened immediately.</p>
               </div>
               <button className="quiet-button" type="button" onClick={() => setIsProjectWizardOpen(false)}>Close</button>
             </div>
@@ -123,4 +123,3 @@ export function ProjectWizardSection({ controller }: { controller: PromptBuilder
 
   </>;
 }
-

@@ -1,9 +1,28 @@
 import type { BackgroundTheme } from "../../../lib/prompt-builder/background-themes";
 import type { GeneratedContentCategory } from "../../../lib/prompt-builder/project-generated-content-api";
+import { useEffect, useRef } from "react";
 import type { PromptBuilderController } from "../controllers/prompt-builder-view";
 
 export function SourceEditorSection({ controller }: { controller: PromptBuilderController }) {
-  const { brandLogoAssets, editableMarkdown, editableProjectFooter, editableProjectHeader, editableProjectLogoNotes, firstLogoAssetPath, handleSaveContentSource, handleSaveProjectChrome, isContentDirty, localWritesAvailable, logoNotesFromMarkdown, logoPreviewPath, projectFooterSource, projectHeaderSource, projectLogoSource, selectedContentEntry, selectedProjectLogoAsset, setEditableMarkdown, setEditableProjectFooter, setEditableProjectHeader, setEditableProjectLogoNotes, setSelectedProjectLogoAsset, workflowMode } = controller;
+  const { brandLogoAssets, editableMarkdown, editableProjectFooter, editableProjectHeader, editableProjectLogoNotes, firstLogoAssetPath, handleSaveContentSource, handleSaveProjectChrome, isContentDirty, localWritesAvailable, logoNotesFromMarkdown, logoPreviewPath, projectFooterSource, projectHeaderSource, projectLogoSource, selectedContentEntry, selectedProjectLogoAsset, setEditableMarkdown, setEditableProjectFooter, setEditableProjectHeader, setEditableProjectLogoNotes, setSelectedProjectLogoAsset, workflowMode, sourceEditorTarget } = controller;
+  const sourceEditorRef = useRef<HTMLTextAreaElement | null>(null);
+
+  useEffect(() => {
+    if (!sourceEditorTarget || !sourceEditorRef.current) return;
+    const textarea = sourceEditorRef.current;
+    textarea.focus();
+    if (sourceEditorTarget.range) {
+      textarea.setSelectionRange(sourceEditorTarget.range.start, sourceEditorTarget.range.end);
+      const beforeText = editableMarkdown.slice(0, sourceEditorTarget.range.start);
+      const lineNumber = beforeText.split("\n").length;
+      const lineHeight = 20;
+      textarea.scrollTop = Math.max(0, (lineNumber - 3) * lineHeight);
+    } else {
+      textarea.setSelectionRange(editableMarkdown.length, editableMarkdown.length);
+      textarea.scrollTop = textarea.scrollHeight;
+    }
+  }, [sourceEditorTarget, editableMarkdown]);
+
   return <>
         {workflowMode === "create" && (
         <section className="panel editor-panel">
@@ -73,22 +92,49 @@ export function SourceEditorSection({ controller }: { controller: PromptBuilderC
             </div>
           </div>
 
-          <div className="panel-title panel-title-row">
-            <div>
-              <h2>Content Source</h2>
-              <p>Review and edit the markdown source used to generate this content.</p>
+          <div className="project-chrome-editor">
+            <div className="panel-title panel-title-row compact-panel-title">
+              <div>
+                <h2>Editable Content Source</h2>
+                <p>Edit the selected Markdown source before compiling prompts or running exports.</p>
+              </div>
+              <div className="mini-actions">
+                <button
+                  className="quiet-button"
+                  type="button"
+                  onClick={() => setEditableMarkdown(selectedContentEntry?.raw || "")}
+                >
+                  Reset
+                </button>
+                <button
+                  className="secondary-button compact-button"
+                  type="button"
+                  disabled={!localWritesAvailable || !selectedContentEntry}
+                  onClick={handleSaveContentSource}
+                >
+                  Save
+                </button>
+              </div>
             </div>
-            <div className="button-row">
-              {isContentDirty && <span className="dirty-pill">Unsaved</span>}
-              <button className="secondary-button" type="button" onClick={() => setEditableMarkdown(selectedContentEntry?.raw ?? "")}>Reset</button>
-              <button className="primary-button" type="button" disabled={!localWritesAvailable} onClick={handleSaveContentSource}>Save source</button>
+            <div className="project-chrome-grid content-source-grid">
+              <div className="chrome-card content-source-card">
+                <div className="chrome-card-header">
+                  <span>{selectedContentEntry?.filename || "No source file selected"}</span>
+                  <small>{isContentDirty ? "Unsaved changes" : "Saved"}</small>
+                </div>
+                <textarea
+                  ref={sourceEditorRef}
+                  className="content-source-textarea"
+                  value={editableMarkdown}
+                  onChange={(event) => setEditableMarkdown(event.target.value)}
+                  spellCheck={false}
+                  placeholder="Select a content source to edit."
+                />
+              </div>
             </div>
           </div>
-
-          <textarea className="content-editor" value={editableMarkdown} onChange={(e) => setEditableMarkdown(e.target.value)} spellCheck={false} />
         </section>
         )}
-
 
   </>;
 }

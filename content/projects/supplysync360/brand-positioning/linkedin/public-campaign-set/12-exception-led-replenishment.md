@@ -1,7 +1,21 @@
 ## Intent
+
 Create a dense, executive LinkedIn carousel for SupplySync360 that positions exception-led replenishment as more practical than static reorder logic in volatile South African supply environments. Create the asset as 5 separate carousel images that can be combined after generation.
 
+## LinkedIn Format
+
+linkedin_carousel
+
+## Layout Hint
+
+exception_replenishment_carousel
+
+## Background Hint
+
+supplysync360_replenishment_depth
+
 ## Visible Text
+
 Page 1 Title: Replenishment Should Start With Exceptions
 Page 1 Body: Static reorder rules break down when supplier timing, branch demand, transport reliability and cash constraints are all moving.
 Page 1 Footer: SupplySync360 | Visibility. Intelligence. Action. Control.
@@ -23,6 +37,7 @@ Page 5 Body: SupplySync360 connects stock, supplier orders, linked businesses, e
 Page 5 Footer: Protect service. Reduce waste. Use cash better.
 
 ## LinkedIn Post Text
+
 A reorder rule can be correct on paper and wrong in the real world.
 
 If another branch has stock, the best action may be transfer.
@@ -40,4 +55,16 @@ The goal is practical control: protect service, reduce waste and avoid buying st
 #Replenishment #InventoryRisk #WorkingCapital #SupplyChainSouthAfrica #SupplySync360
 
 ## Image Brief
+
 Create a premium 5-image LinkedIn carousel as 5 separate 4:5 portrait images, one image per page, each 1080 x 1350 px. Do not create a PDF and do not place multiple pages in one image. The user will combine the images afterwards. Use SupplySync360 brand styling with deep teal, vivid teal, graphite, mist and restrained signal yellow. Visual direction: South African inventory decision environment with branch transfer tote, supplier delay note, expiry tray, stock card and return item arranged around competing next actions. Make each page visually distinct: opener, static-rules page, signal page, action page and final position page. Keep all on-image text exactly from Visible Text. Avoid fake system screens, generic icons and clutter.
+
+## Post Notes
+
+Internal campaign notes:
+- Brand: SupplySync360
+- Channel: LinkedIn
+- Asset type: carousel
+- Page count detected: 5
+- Use Visible Text as the exact on-image text source.
+- Use LinkedIn Post Text as the caption/post copy only.
+- Do not display Post Notes in generated images or post copy.

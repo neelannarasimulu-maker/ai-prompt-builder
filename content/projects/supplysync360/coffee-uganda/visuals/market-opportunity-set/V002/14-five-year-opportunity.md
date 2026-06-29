@@ -2,34 +2,32 @@
 
 Illustrate how the coffee import opportunity can scale into a broader business.
 
+## Layout Hint
+
+five_year_growth_pathway
+
+## Background Hint
+
+supplysync360_soft_market_depth
+
 ## Visible Text
 
-### Five-Year Opportunity Pathway
-
-Year 1:
-Uganda validation and pilot imports.
-
-Year 2:
-Importer-distributor operations with recurring buyers.
-
-Year 3:
-Ethiopian specialty portfolio and premium channels.
-
-Year 4:
-Private-label and value-added coffee products.
-
-Year 5:
-Technology-enabled East African trade ecosystem.
-
-### Strategic Upside
-
-Coffee is the first corridor.
-
-The same model can later extend into tea, cocoa, vanilla, macadamia, avocado and other African agricultural products.
-
-The long-term value is not only coffee trading.
-
-It is a regional sourcing and supply-chain platform.
+Title: Five-Year Opportunity Pathway
+Phase: Year 1
+Body: Uganda validation and pilot imports.
+Phase: Year 2
+Body: Importer-distributor operations with recurring buyers.
+Phase: Year 3
+Body: Ethiopian specialty portfolio and premium channels.
+Phase: Year 4
+Body: Private-label and value-added coffee products.
+Phase: Year 5
+Body: Technology-enabled East African trade ecosystem.
+Title: Strategic Upside
+Body: Coffee is the first corridor.
+Body: The same model can later extend into tea, cocoa, vanilla, macadamia, avocado and other African agricultural products.
+Body: The long-term value is not only coffee trading.
+Body: It is a regional sourcing and supply-chain platform.
 
 ## Image Brief
 

@@ -1,15 +1,20 @@
+import { useMemo, useState } from "react";
 import type { PromptReviewResult } from "../../review/prompt-review-types";
 import { buildPromptReviewDashboard } from "../../review/prompt-review-dashboard";
 import type {
   PromptReviewComparison,
   PromptReviewSnapshot,
 } from "../../review/prompt-review-snapshots";
+import type { ReviewDashboardIssue } from "../../review/prompt-review-dashboard";
+
+export type FixStatus = "open" | "copied" | "applied" | "dismissed";
 
 type ReviewPanelProps = {
   enabled: boolean;
   result: PromptReviewResult | null;
   previousSnapshot?: PromptReviewSnapshot | null;
   comparison?: PromptReviewComparison | null;
+  editableMarkdown: string;
   onCopyExecutiveSummary?: () => void;
   onCopyPriorityFixes?: () => void;
   onCopyFullReview?: () => void;
@@ -17,6 +22,14 @@ type ReviewPanelProps = {
   onSaveSnapshot?: () => void;
   onClearSnapshots?: () => void;
   onCopyComparison?: () => void;
+  onGoToSourceSection?: (issue: ReviewDashboardIssue) => void;
+  onCopySuggestedEdit?: (issue: ReviewDashboardIssue) => void;
+  onRequestApplySourceEdit?: (issue: ReviewDashboardIssue) => boolean;
+  onDismissFix?: (issue: ReviewDashboardIssue) => void;
+  getFixStatus?: (issueId: string) => FixStatus;
+  previewForIssue?: (issue: ReviewDashboardIssue) => { oldText: string; newText: string } | null;
+  shouldApplyMissingSection?: (issue: ReviewDashboardIssue, markdown: string) => boolean;
+  showNonTrivialCopyOnly?: (issue: ReviewDashboardIssue, markdown: string) => boolean;
 };
 
 function delta(value: number | null): string {
@@ -33,6 +46,7 @@ export function PromptQualityReviewPanel({
   result,
   previousSnapshot,
   comparison,
+  editableMarkdown,
   onCopyExecutiveSummary,
   onCopyPriorityFixes,
   onCopyFullReview,
@@ -40,13 +54,43 @@ export function PromptQualityReviewPanel({
   onSaveSnapshot,
   onClearSnapshots,
   onCopyComparison,
+  onGoToSourceSection,
+  onCopySuggestedEdit,
+  onRequestApplySourceEdit,
+  onDismissFix,
+  getFixStatus,
+  previewForIssue,
+  shouldApplyMissingSection,
+  showNonTrivialCopyOnly,
 }: ReviewPanelProps) {
+  const [previewIssue, setPreviewIssue] = useState<ReviewDashboardIssue | null>(null);
+  const [previewData, setPreviewData] = useState<{ oldText: string; newText: string } | null>(null);
+
   if (!enabled) return null;
   if (!result) {
     return <section className="review-dashboard status-card">Review is enabled, but the current prompt is not ready for review.</section>;
   }
 
   const dashboard = buildPromptReviewDashboard(result);
+
+  function beginApplyPreview(issue: ReviewDashboardIssue) {
+    if (!previewForIssue) return;
+    const preview = previewForIssue(issue);
+    if (!preview) return;
+    setPreviewIssue(issue);
+    setPreviewData(preview);
+  }
+
+  function closePreview() {
+    setPreviewIssue(null);
+    setPreviewData(null);
+  }
+
+  function handleConfirmApply() {
+    if (!previewIssue || !onRequestApplySourceEdit) return;
+    onRequestApplySourceEdit(previewIssue);
+    closePreview();
+  }
 
   return (
     <section className="review-dashboard" aria-label="Prompt Quality Review">
@@ -79,22 +123,63 @@ export function PromptQualityReviewPanel({
         <div className="review-section-heading"><span>01</span><div><h3>Priority Fixes</h3><p>Start here. These are the three highest-impact issues.</p></div></div>
         {dashboard.priorities.length > 0 ? (
           <div className="review-priority-list">
-            {dashboard.priorities.map((issue, index) => (
-              <article className={`review-priority review-severity-${issue.category}`} key={issue.id}>
-                <span>{index + 1}</span>
-                <div>
-                  <strong>{issue.message}</strong>
-                  <div className="review-guidance">
-                    <p><span>Where to fix</span><strong>{issue.guidance.likelySourceSection}</strong><small>{issue.guidance.confidence} confidence</small></p>
-                    <p><span>Why it matters</span>{issue.guidance.reason}</p>
-                    <p><span>Suggested edit</span>{issue.guidance.suggestedEditGuidance}</p>
+            {dashboard.priorities.map((issue, index) => {
+              const fixStatus = getFixStatus?.(issue.id) ?? "open";
+              const canApply = shouldApplyMissingSection?.(issue, editableMarkdown) ?? false;
+              const copyOnly = showNonTrivialCopyOnly?.(issue, editableMarkdown) ?? true;
+              return (
+                <article className={`review-priority review-severity-${issue.category}`} key={issue.id}>
+                  <span>{index + 1}</span>
+                  <div>
+                    <strong>{issue.message}</strong>
+                    {issue.changeType && issue.target && (
+                      <div className="review-change-type">
+                        <span className={`change-type-badge change-type-${issue.changeType.toLowerCase().replace(/\s/g, "-")}`}>{issue.changeType}</span>
+                        <span className="change-target">{issue.target}</span>
+                      </div>
+                    )}
+                    <div className="review-guidance">
+                      <p><span>Where to fix</span><strong>{issue.guidance.likelySourceSection}</strong><small>{issue.guidance.confidence} confidence</small></p>
+                      <p><span>Why it matters</span>{issue.guidance.reason}</p>
+                      <p><span>Suggested edit</span>{issue.guidance.suggestedEditGuidance}</p>
+                    </div>
+                    <div className="review-priority-actions">
+                      <button className="secondary-button compact-button" type="button" onClick={() => onGoToSourceSection?.(issue)}>Go to source section</button>
+                      {copyOnly ? (
+                        <button className="secondary-button compact-button" type="button" onClick={() => onCopySuggestedEdit?.(issue)}>Copy suggested edit</button>
+                      ) : (
+                        <button className="secondary-button compact-button" type="button" onClick={() => beginApplyPreview(issue)}>Insert missing section</button>
+                      )}
+                      <button className="quiet-button compact-button" type="button" onClick={() => onDismissFix?.(issue)}>Dismiss</button>
+                      <span className={`fix-status fix-status-${fixStatus}`}>{fixStatus}</span>
+                    </div>
                   </div>
-                </div>
-              </article>
-            ))}
+                </article>
+              );
+            })}
           </div>
         ) : <p className="status-ok">No priority fixes. This prompt is ready.</p>}
       </section>
+
+      {previewData && previewIssue ? (
+        <section className="review-section-card review-preview-card">
+          <div className="review-section-heading"><span>02</span><div><h3>Preview source edit</h3><p>Review the proposed safe source insertion before applying.</p></div></div>
+          <div className="review-preview-content">
+            <div className="review-preview-block">
+              <h4>Current source</h4>
+              <textarea readOnly value={previewData.oldText} spellCheck={false} />
+            </div>
+            <div className="review-preview-block">
+              <h4>Proposed source</h4>
+              <textarea readOnly value={previewData.newText} spellCheck={false} />
+            </div>
+          </div>
+          <div className="button-row review-preview-actions">
+            <button className="secondary-button compact-button" type="button" onClick={closePreview}>Cancel</button>
+            <button className="primary-button compact-button" type="button" onClick={handleConfirmApply}>Apply source edit</button>
+          </div>
+        </section>
+      ) : null}
 
       <section className="review-section-card">
         <div className="review-section-heading"><span>02</span><div><h3>Agent Results</h3><p>Compact specialist assessments with full details on demand.</p></div></div>
@@ -140,6 +225,12 @@ export function PromptQualityReviewPanel({
             {dashboard.issues.map((issue) => (
               <article className={`review-finding review-severity-${issue.category}`} key={issue.id}>
                 <div><span>{issue.category}</span><strong>{issue.message}</strong></div>
+                {issue.changeType && issue.target && (
+                  <div className="review-change-type-compact">
+                    <span className={`change-type-badge change-type-${issue.changeType.toLowerCase().replace(/\s/g, "-")}`}>{issue.changeType}</span>
+                    <span className="change-target">{issue.target}</span>
+                  </div>
+                )}
                 <small>Sources: {issue.sources.join(", ")}</small>
                 <div className="review-guidance review-guidance-compact">
                   <p><span>Where to fix</span><strong>{issue.guidance.likelySourceSection}</strong><small>{issue.guidance.confidence} confidence</small></p>

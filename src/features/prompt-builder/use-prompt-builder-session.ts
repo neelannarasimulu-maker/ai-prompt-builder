@@ -22,6 +22,7 @@ export function usePromptBuilderSession() {
   const [selectedVariantId, setSelectedVariantId] = useLocalStorageState("promptBuilder.selectedVariantId", "executive_minimal");
   const [selectedBatchContentPaths, setSelectedBatchContentPaths] = useLocalStorageState<string[]>("promptBuilder.selectedBatchContentPaths", []);
   const [approvedGeneratedFileIds, setApprovedGeneratedFileIds] = useLocalStorageState<string[]>("promptBuilder.approvedGeneratedFileIds", []);
+  const [selectedSourceVersionPath, setSelectedSourceVersionPath] = useLocalStorageState("promptBuilder.selectedSourceVersionPath", "");
 
   return {
     selectedContentType, setSelectedContentType, selectedContentSet, setSelectedContentSet,
@@ -33,5 +34,6 @@ export function usePromptBuilderSession() {
     customOutputFilename, setCustomOutputFilename, workflowMode, setWorkflowMode,
     selectedRecipeId, setSelectedRecipeId, selectedVariantId, setSelectedVariantId,
     selectedBatchContentPaths, setSelectedBatchContentPaths, approvedGeneratedFileIds, setApprovedGeneratedFileIds,
+    selectedSourceVersionPath, setSelectedSourceVersionPath,
   };
 }

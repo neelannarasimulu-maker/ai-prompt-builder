@@ -284,8 +284,8 @@ export function useReviewCoordination(scope: ReturnType<typeof useAutomationCoor
         file.filename,
         file.displayName,
         file.versionLabel || "Unversioned",
-        file.relativePath,
-        file.generatedRelativePath,
+        file.routePath || file.relativePath,
+        file.projectRelativePath || file.generatedRelativePath,
         file.fileType,
         file.category,
       ].join(" ").toLowerCase().includes(query);
