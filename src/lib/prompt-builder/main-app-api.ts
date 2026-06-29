@@ -27,6 +27,10 @@ export type StorageStatus = {
 
 const unavailableMessage = "Local storage is available when the app is running with npm run dev.";
 
+function isAbsoluteFilesystemPath(value: string): boolean {
+  return /^[a-zA-Z]:[\\/]/.test(value) || value.startsWith("/") || value.startsWith("\\\\");
+}
+
 export function mainAppAssetUrl(path: string): string {
   return path;
 }
@@ -62,6 +66,10 @@ export function getStorageStatus(): Promise<StorageStatus> {
 }
 
 export function updateStorageRoot(contentRoot: string, initialize = false): Promise<StorageStatus> {
+  if (browserWorkspaceAvailable() && !isAbsoluteFilesystemPath(contentRoot.trim())) {
+    return connectBrowserWorkspace(initialize);
+  }
+
   return jsonRequest<StorageStatus>("/api/storage/settings", {
     method: "PUT",
     headers: { "Content-Type": "application/json" },

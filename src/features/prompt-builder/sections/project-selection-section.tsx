@@ -6,6 +6,7 @@ import type { PromptBuilderController } from "../controllers/prompt-builder-view
 
 export function ProjectSelectionSection({ controller }: { controller: PromptBuilderController }) {
   const { backgroundPresets, backgroundThemes, browserFsAvailable, compiled, contentSets, contentTypeLabel, contentTypes, documentBackgroundPresets, handleUpdateStorageRoot, isDocumentLike, layoutPresets, logoPreviewPath, profileList, selectedBackgroundPresetId, selectedBackgroundTheme, selectedBrand, selectedContentPath, selectedContentSet, selectedContentType, selectedDocumentBackgroundPresetId, selectedLayoutPresetId, selectedOutputProfileId, selectedProjectLogoAsset, setSelectedBackgroundPresetId, setSelectedBackgroundTheme, setSelectedContentPath, setSelectedContentSet, setSelectedContentType, setSelectedDocumentBackgroundPresetId, setSelectedLayoutPresetId, setSelectedOutputProfileId, setStorageRoot, storageRoot, storageState, visibleContentFiles, workflowMode, workspaceKind } = controller;
+  const usingBrowserWorkspace = workspaceKind === "browser" || (browserFsAvailable && storageState !== "available");
 
   // Detect multiple source versions for current content set
   const sourceVersions = useMemo(
@@ -129,12 +130,12 @@ export function ProjectSelectionSection({ controller }: { controller: PromptBuil
             <div className="storage-settings-body">
               {storageState === "read-only" && browserFsAvailable && <p className="storage-notice">This hosted build can still work with your local files if you connect a local <code>content</code> folder in the browser. Choose the folder once, then the app can read and save Markdown files inside it.</p>}
               {storageState === "read-only" && !browserFsAvailable && <p className="storage-notice">Local write tools are unavailable in this browser. Run <code>npm run dev</code> on your computer to create projects, save files, upload assets and export documents.</p>}
-              <label className="field"><span>{workspaceKind === "browser" ? "Connected local folder" : "Content root"}</span><input value={storageRoot} onChange={(event) => setStorageRoot(event.target.value)} disabled={storageState !== "available" && !browserFsAvailable} placeholder={browserFsAvailable ? "Choose your local content folder" : "C:\\Users\\name\\OneDrive\\Prompt Builder\\content"} /></label>
+              <label className="field"><span>{usingBrowserWorkspace ? "Connected local folder" : "Content root"}</span><input value={storageRoot} onChange={(event) => setStorageRoot(event.target.value)} readOnly={usingBrowserWorkspace} disabled={storageState !== "available" && !browserFsAvailable} placeholder={usingBrowserWorkspace ? "Choose your local content folder" : "C:\\Users\\name\\OneDrive\\Prompt Builder\\content"} /></label>
               <div className="button-row">
-                <button className="secondary-button compact-button" type="button" disabled={storageState !== "available" && !browserFsAvailable} onClick={() => handleUpdateStorageRoot(false)}>{browserFsAvailable ? "Connect folder" : "Use root"}</button>
-                <button className="quiet-button compact-button" type="button" disabled={storageState !== "available" && !browserFsAvailable} onClick={() => handleUpdateStorageRoot(true)}>{browserFsAvailable ? "Connect + initialize" : "Initialize root"}</button>
+                <button className="secondary-button compact-button" type="button" disabled={storageState !== "available" && !browserFsAvailable} onClick={() => handleUpdateStorageRoot(false)}>{usingBrowserWorkspace ? "Choose folder" : "Use root"}</button>
+                <button className="quiet-button compact-button" type="button" disabled={storageState !== "available" && !browserFsAvailable} onClick={() => handleUpdateStorageRoot(true)}>{usingBrowserWorkspace ? "Choose + initialize" : "Initialize root"}</button>
               </div>
-              <p className="field-note">{browserFsAvailable ? "Choose the local Prompt Builder content folder itself, or a parent folder that contains a content folder. Initialization creates missing folders such as projects when needed." : "The main app writes to this folder. Initialization copies missing brand seed files without overwriting existing content."}</p>
+              <p className="field-note">{usingBrowserWorkspace ? "Choose the local Prompt Builder content folder itself, or a parent folder that contains a content folder. Initialization creates missing folders such as projects when needed." : "The main app writes to this folder. Initialization copies missing brand seed files without overwriting existing content."}</p>
             </div>
           </details>
 
